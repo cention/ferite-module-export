@@ -26,6 +26,8 @@ function ListErrands(number exportID) {
 
 
 function getErrandInfo(array errandList,array formatFields){
+	
+	//object errandObj;
 	array tempExportList=[];
 	array temp = [ "errandId" => "",  "fromAddress" => "",  "toAddress" => "", "subject" => "", "question" => "", "answer"=>"", "arrived" => "", "opened" =>"","answered" =>"", "closed" => "", "agentid" => "", "agentname" =>"","areaid" =>"", "areaname" =>"", "tags" =>"", "clientid" =>"", "priority" =>"" ];
 
@@ -34,10 +36,8 @@ function getErrandInfo(array errandList,array formatFields){
 			
 	
 		
-		errandObj = Workflow.Errand.load(errandItem);
+		object errandObj = Workflow.Errand.load(errandItem.id);
 
-		
-			
 		if(Array.keyExists(formatFields, "errandId") ) {
 
 			temp[ "errandId" ] = "" + errandItem;
