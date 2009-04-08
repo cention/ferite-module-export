@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+<module>
+	<name>Export</name>
+	<documentation-list>
+		<include>Export.feh</include>
+		<include>export.fe</include>
+	</documentation-list>
+	<dependance-list>
+	</dependance-list>
+</module>
