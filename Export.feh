@@ -1,0 +1,142 @@
+namespace Export {
+
+ function ListFormats(number idformat){
+		array formatFields = Workflow.Format.listFieldsByFormat(idformat);
+		if( Array.keyExists(formatFields, "defaultformat") )
+    			Array.del( formatFields, "defaultformat" );
+		if( Array.keyExists(formatFields, "_version") )
+    			Array.del( formatFields, "_version" );
+		return formatFields;
+}
+
+
+function ListErrands(number exportID) {
+	array errandList,idAreas;	
+	object exportObj = Workflow.Export.load(exportID);
+		
+		exportObj and exportObj.areas.each() using (areaItems){
+			idAreas [ ] = areaItems.id;
+		};
+	
+		errandList = Workflow.Errand.listLimitedErrandsforExport(idAreas,exportObj.start,exportObj.finish);
+
+		return errandList;
+
+}
+
+
+function getErrandInfo(array errandList,array formatFields){
+	array tempExportList=[];
+	array temp = [ "errandId" => "",  "fromAddress" => "",  "toAddress" => "", "subject" => "", "question" => "", "answer"=>"", "arrived" => "", "opened" =>"","answered" =>"", "closed" => "", "agentid" => "", "agentname" =>"","areaid" =>"", "areaname" =>"", "tags" =>"", "clientid" =>"", "priority" =>"" ];
+
+		
+		errandList.each() using (errandItem)	{
+			
+	
+		
+		errandObj = Workflow.Errand.load(errandItem);
+
+		
+			
+		if(Array.keyExists(formatFields, "errandId") ) {
+
+			temp[ "errandId" ] = "" + errandItem;
+		}
+
+		if(Array.keyExists(formatFields, "fromAddress") ){
+
+			temp[ "fromAddress" ] = "" + errandObj.mail.from.emailAddress;
+		}
+			
+		if(Array.keyExists(formatFields, "toAddress") ){
+			array receiverList;
+			errandObj.mail.to.each() using (value){
+				 //receiverList[ ] = value.emailAddress;
+				//Array.push(receiverList,value.emailAddress);
+				temp[ "toAddress" ] = value.emailAddress;
+			};
+			//temp[ "toAddress" ] = receiverList;
+		}
+			
+		if(Array.keyExists(formatFields, "subject") ){
+
+			temp[ "subject" ] = "" + errandObj.message.subject;
+		}
+		
+		if(Array.keyExists(formatFields, "question") ) {
+
+			temp[ "question" ] = "" + errandObj.message.body;
+		}
+
+		if(Array.keyExists(formatFields, "answer") ) {
+
+			temp[ "answer" ] = "" +(errandObj.answer ? errandObj.answer.message.body : "null");
+
+		}
+		
+		if(Array.keyExists(formatFields, "arrived") ) {
+
+			temp[ "arrived" ] = Date.date(errandObj.timestampArrive).format("%Y/%m/%d") ;
+		}	
+		
+		if(Array.keyExists(formatFields, "opened") ) {
+
+			temp[ "opened" ]= (errandObj.timestampOpen > 0 ?Date.date(errandObj.timestampOpen).format("%Y/%m/%d"):"null") ;
+		}
+
+		if(Array.keyExists(formatFields, "answered") ) {
+
+			temp[ "answered" ] = (errandObj.timestampLastAnswered>0? Date.date(errandObj.timestampLastAnswered).format("%Y/%m/%d"):"null") ;
+		}
+
+		if(Array.keyExists(formatFields, "closed") ) {
+
+			temp[ "closed" ] = (errandObj.timestampClosed >0?Date.date(errandObj.timestampClosed).format("%Y/%m/%d"):"null");
+		}
+
+		if(Array.keyExists(formatFields, "agentid") ) {
+
+			temp[ "agentid" ] = (errandObj.owner?errandObj.owner.id: "null");
+		
+		}
+
+		if(Array.keyExists(formatFields, "agentname") ) {
+
+			temp[ "agentname" ] =  (errandObj.owner?errandObj.owner.username: "null");
+		}
+	
+		if(Array.keyExists(formatFields, "areaid") ) {
+			temp[ "areaid" ] = "" + errandObj.targetArea.id;
+		}
+		
+		if(Array.keyExists(formatFields, "areaname") ) {
+			temp[ "areaname" ] = errandObj.targetArea.name;
+		}
+			
+		if(Array.keyExists(formatFields, "tags") ){
+			array taglist;
+			errandObj.tags.each() using (value){
+				//taglist[] = value.display;
+				//Array.push(taglist, value.display);
+				temp["tags"] = value.display;
+			};
+			//temp[ "tags" ] = taglist;
+		}
+
+		if(Array.keyExists(formatFields, "clientid") ){
+
+			temp[ "clientid" ] = "" + errandObj.client.id;
+		}
+
+		if(Array.keyExists(formatFields, "priority") ) {
+			
+			temp[ "priority" ] = "" + (errandObj.priority?errandObj.priority.name : "null"); 
+		}	
+			
+			tempExportList[] = temp;
+			temp[] = "";
+};
+return tempExportList;
+}
+
+}
