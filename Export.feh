@@ -1,42 +1,92 @@
 namespace Export {
 
- function ListFormats(number idformat){
-		array formatFields = Workflow.Format.listFieldsByFormat(idformat);
+function getSourceAreas (object exportAreas){
+		array idAreas = [];
+
+		exportAreas and exportAreas.areas.each() using (areaItems){
+			idAreas [ ] = areaItems.id;
+		};
+		
+		if (not idAreas){
+			
+			return idAreas = ["No source area list found for this export."];
+		}
+
+		return idAreas;
+}
+
+
+ function listExportFormats(number idformat){
+
+	array formatFields = Workflow.Format.listFieldsByFormat(idformat);
+
 		if( Array.keyExists(formatFields, "defaultformat") )
     			Array.del( formatFields, "defaultformat" );
 		if( Array.keyExists(formatFields, "_version") )
     			Array.del( formatFields, "_version" );
+		if( Array.keyExists(formatFields, "id") )
+    			Array.del( formatFields, "id" );
+
 		return formatFields;
 }
 
 
-function ListErrands(number exportID) {
-	array errandList,idAreas;	
-	object exportObj = Workflow.Export.load(exportID);
-		
-		exportObj and exportObj.areas.each() using (areaItems){
-			idAreas [ ] = areaItems.id;
-		};
-	
-		errandList = Workflow.Errand.listLimitedErrandsforExport(idAreas,exportObj.start,exportObj.finish);
 
-		return errandList;
+function listErrandsforExportApp(object exportObj) {
+	
+	array errandsList= [];
+
+	if(exportObj.start == 0 || exportObj.finish == 0) {
+			
+			return errandsList = ["Time interval is not specified for this export."];
+		}
+	else {	
+		Workflow.Errand.listLimitedErrandsByAreasAndByTimeInterval(getSourceAreas(exportObj),exportObj.start,exportObj.finish).each() using (errandItem)	{
+				errandsList[] = errandItem.id;
+		
+			};
+		if(not errandsList) {
+			return errandsList = ["No errands found in the time interval for this export."];
+			
+		}
+	}
+
+	return errandsList;
 
 }
 
 
-function getErrandInfo(array errandList,array formatFields){
-	
-	//object errandObj;
-	array tempExportList=[];
-	array temp = [ "errandId" => "",  "fromAddress" => "",  "toAddress" => "", "subject" => "", "question" => "", "answer"=>"", "arrived" => "", "opened" =>"","answered" =>"", "closed" => "", "agentid" => "", "agentname" =>"","areaid" =>"", "areaname" =>"", "tags" =>"", "clientid" =>"", "priority" =>"" ];
 
-		
-		errandList.each() using (errandItem)	{
-			
+function listErrandsForExportScript (object exportObj) {
+	array errandsList= [];
 	
+	if(exportObj.start == 0 || exportObj.finish == 0) {
+			
+			return errandsList = ["Time interval is not specified for this export."];
+		}
+	else {	
+		Workflow.Errand.listErrandsByAreasAndByTimeInterval(getSourceAreas(exportObj),exportObj.start,exportObj.finish).each() using (errandItem)	{
+				errandsList[] = errandItem.id;
 		
-		object errandObj = Workflow.Errand.load(errandItem.id);
+			};
+		
+		if(not errandsList) {
+			return errandsList = ["No errands found in the time interval for this export."];
+			
+		}
+	}
+	
+	return errandsList;
+}
+
+function getErrandInfo(array errandsList,array formatFields){
+	
+		array exportErrands = [];
+		array temp = [];
+
+		errandsList.each() using (errandItem)	{
+			
+		object errandObj = Workflow.Errand.load(errandItem);
 
 		if(Array.keyExists(formatFields, "errandId") ) {
 
@@ -133,10 +183,646 @@ function getErrandInfo(array errandList,array formatFields){
 			temp[ "priority" ] = "" + (errandObj.priority?errandObj.priority.name : "null"); 
 		}	
 			
-			tempExportList[] = temp;
+			exportErrands[] = temp;
 			temp[] = "";
-};
-return tempExportList;
+	};
+	return exportErrands;
 }
+
+   function joinTwoArray( array a, array b ){
+
+		Array.each( b )using( bValue ){
+
+			Array.each( a ) using ( aValue ){
+
+				if( bValue == aValue )
+					return a;
+			};
+
+			Array.push( a, bValue );		
+		};
+
+		return a;	
+
+	}
+
+	function removeDuplicate ( array A ) {
+
+		number lv;	
+		array rA; //returned Array
+		A = Array.sort ( A );
+
+		for ( lv = 0 ; lv < Array.size(A) - 1; lv ++ ) {
+			if ( A[lv] != A[lv+1] )
+				rA[] = A[lv];
+		}
+	
+		rA[] = A[lv];	
+		
+		return rA;
+	
+	}
+
+
+	function createExportMessage( object mail ) {
+
+		object message = new Mail.Message();
+		object text = new Mail.MessagePart();
+		object to = new Mail.Address( mail.to[0].emailAddress);
+		object from = new Mail.Address(mail.from.emailAddress );
+
+		message.header = new Mail.MessageHeader();
+
+		
+	
+		message.header.from.add( from  );
+		message.header.to.add( to);
+		message.header.subject = mail.subject;
+		message.header.date = Date.localDate( Date.GMTnow() ).format( '%a, %d %b %Y %H:%M:%S %z' );
+	
+		
+		message = MailUtilities.setOutgoingHeader(message,mail.from.emailAddress);
+	
+		text.type = Mail.Mime.TYPETEXT;
+		text.subtype = "plain";
+		text.charset = "UTF-8";
+		text.content = mail.body;
+	
+		if( not mail.hasAttachments ) {
+			message.content = text;
+		} else {
+		object content = new Mail.MessageMultiPart();
+		content.subtype = "mixed";
+		content.addPart( text );
+		mail.attachments.each() using ( attachment ) {
+			object part = new Mail.MessagePart();
+			
+			part.filepath =  "${attachment.localName}";
+			part.filename = attachment.fileName;
+			part.type = Mail.Mime.TYPEAPPLICATION;
+			part.subtype = "octet-stream";
+			part.encoding = Mail.Encoding.ENCBINARY;
+			content.addPart( part );
+		};
+		
+		message.content = content;
+		}
+	
+		return message;
+	}
+
+
+	function sendInternalMsg(object exportObj){
+
+		object simpleMessage = new Workflow.SimpleMessage();
+		object inboxMessage = new Workflow.InternalMessage();
+		object sentMessage = new Workflow.InternalMessage();
+		object  exportOwnerUserObj;
+		number timestampSent = Date.GMTnow();		
+		object objSender= Workflow.User.currentWorkflowUser;
+		
+		
+		
+		exportOwnerUserObj = Workflow.User.load(exportObj.createdby.id);
+		
+		simpleMessage.setValue( 'subject', "Cention Exports" );
+		simpleMessage.setValue( 'body', "Export is finished." );
+		simpleMessage.save();
+
+		
+		sentMessage.setValue( 'type', Workflow.InternalMessageType.create( 'Urgent' ) );
+		sentMessage.setValue( 'timestampSent', Date.GMTnow() );
+		sentMessage.setValue( 'message', simpleMessage );
+		sentMessage.setValue( 'folder', Workflow.InternalFolder.create( 'Sent' ) );
+		sentMessage.setValue( 'origin', objSender );
+		sentMessage.save();
+		
+		inboxMessage.setValue( 'type', Workflow.InternalMessageType.create( 'Urgent' ) );
+		inboxMessage.setValue( 'timestampSent', Date.GMTnow() );
+		inboxMessage.setValue( 'message', simpleMessage );
+		inboxMessage.setValue( 'folder', Workflow.InternalFolder.create( 'Inbox' ) );
+		inboxMessage.setValue( 'targets', [exportOwnerUserObj]);
+		inboxMessage.save();
+
+
+	}
+
+
+
+	function sendExportToOwner(object export, string exportfile){
+		
+		
+		object mail,mailAttachment;
+ 		object objMailSender,ObjMailReceiver;
+ 		object exportSender;
+ 		array attachments = [];
+ 		string path ;
+		string addrToSend= "",addrFrom = "";
+ 		string exportsDirectory = (Config.CachePath - 'Cache/') + 'Exports';
+ 
+ 		string subject = "Cention Exports";
+ 		string msgContent = "Hi,Your order for export is completed and the generated file is attached herewith. Thanks a lot.";
+
+		object exportOwnerEmail = Workflow.User.load(export.createdby.id);
+		object connection = new Mail.Connection();
+	
+		
+		addrToSend = (exportOwnerEmail.person ? exportOwnerEmail.person.email.emailAddress:"");
+
+		addrFrom = "sys@cention.se";
+
+ 		if (addrToSend == "") {
+			Console.println("The export owner provides no email address.");
+			return;
+		}
+		else {
+		
+ 			objMailSender =  new Workflow.MailOrigin();
+ 			ObjMailReceiver = new Workflow.MailOrigin();
+		
+		
+		
+ 			objMailSender.setValue( 'emailAddress', addrToSend );
+ 			objMailSender.save();
+ 		
+			ObjMailReceiver.setValue( 'emailAddress', addrFrom );
+ 			ObjMailReceiver.save();
+
+ 			mail = new Workflow.Mail();
+ 
+ 			mail.setValue( 'to', [objMailSender] );
+ 			mail.setValue( 'from', ObjMailReceiver );
+ 			mail.setValue( 'subject', subject );
+ 			mail.setValue( 'body', msgContent ) ;
+ 			mail.setValue( 'hasAttachments', true );
+ 	
+ 			mailAttachment = new Workflow.MailAttachment();
+ 
+ 			path = "${exportsDirectory}";
+ 		
+ 			mailAttachment.setValue( 'localName', "${path}/${exportfile}");
+ 			mailAttachment.setValue( 'fileName', "${exportfile}");
+ 			mailAttachment.setValue( 'majorType', Mail.Mime.toString( Mail.Mime.TYPETEXT ) );
+ 			mailAttachment.setValue( 'minorType', "plain" );
+ 			mailAttachment.save();
+ 			mail.attachmentsAdd( mailAttachment );
+ 
+ 			attachments[] = mailAttachment;
+		
+ 			mail.setValue( 'attachments', attachments );
+ 			mail.save();
+ 		
+ 			Console.println("Finished.");
+ 			Console.println("Sending E-mail to export owner...");
+ 
+ 		
+ 		
+			MailUtilities.sendMessage(connection,createExportMessage(mail) );
+		
+ 			Console.println("Sending internal message to the user...");
+
+			sendInternalMsg(export);
+		}
+
+	}
+
+	function saveExports(string filename, string results){
+		string path ;
+		string exportsDirectory = (Config.CachePath - 'Cache/') + 'Exports';
+
+		path = "${exportsDirectory}";
+
+			not Directory.open( path ) and Directory.make( path, 0755 );
+
+			File.create( "${path}/${filename}" ) using ( file ) {
+				file.writeln( results );
+			};
+
+	}
+	
+
+/*************Function for match Generating CSV file*****************************/	
+/*************Function for match Generating CSV file
+Created by : Kreshano Dutta
+************************************************/	
+
+	function generateCSV(array dataForFile, object export)
+	{
+		array collumnHeader;
+		string resultCSV = "",currentTimeStamp="",fileName = "";
+		object fileWriteObject;
+		boolean flag;
+		number count = 0;
+
+		
+		dataForFile[0].each() using( temp )
+		{
+			collumnHeader[] = Array.getName(dataForFile[0],count);
+			count++;
+		};
+
+	
+		dataForFile.each() using ( tempArray )
+		{
+			flag = false;
+			collumnHeader.each() using ( key ) 
+			{
+				if( flag )
+					resultCSV += ",";
+				resultCSV += tempArray[ key ];
+				flag = true;
+			};
+			resultCSV += "\n";
+		};
+		
+		currentTimeStamp = "" + Date.GMTnow();
+		fileName = export.name + currentTimeStamp + ".csv";
+
+		saveExports(fileName, resultCSV );
+		
+		//if(export.emailExports == true)
+			sendExportToOwner(export, fileName);
+		
+		return fileName;
+	}
+
+
+
+/*************Function for match Generating XLS file
+Created by : Kreshano Dutta
+************************************************/	
+	function generateXLS( array dataForFile, object export )
+	{
+		string resultXLS = "",fileName = "";
+		object fileWriteObject;
+		array collumnHeader;
+		string currentTimeStamp = "" + Date.GMTnow();
+		number count = 0;
+
+		resultXLS =  "<html>\n";
+		resultXLS += "<head>\n";
+		resultXLS += "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n";
+		resultXLS += "</head>\n";
+		
+		resultXLS += "<body>\n";
+		resultXLS += "<table border=1>\n";
+	
+		resultXLS += "<tr>\n";
+
+		
+		dataForFile[0].each() using( temp )
+		{
+			collumnHeader[] = Array.getName(dataForFile[0],count);
+			count++;
+		};
+		
+		
+		collumnHeader.each() using ( collumn )
+		{
+			resultXLS += "<td>" + collumn + "</td>";
+		};
+
+		resultXLS += "</tr>\n";
+		
+		dataForFile.each() using ( tempArray )
+		{
+			resultXLS += "<tr>\n";
+			collumnHeader.each() using ( key ) 
+			{
+				resultXLS += "<td>" + tempArray[key] + "</td>\n";
+			};
+			resultXLS += "</tr>\n";	
+		};
+		
+		
+		resultXLS += "</table>\n";
+		resultXLS += "</body>\n";	
+		resultXLS +=  "</html>";	
+		
+		fileName = export.name + currentTimeStamp + ".xls";
+		
+		saveExports(fileName, resultXLS );
+		//if(export.emailExports == true)
+			sendExportToOwner(export, fileName);
+		
+		return fileName;
+	}
+
+
+/*************Function for match Generating XML file
+Created by : Kreshano Dutta
+************************************************/	
+
+	function generateXML(array dataForFile, object export )
+	{
+		array tagName;
+		string resultXML = "",fileName = "" ;
+		object fileWriteObject;
+ 		string currentTimeStamp = "" + Date.GMTnow();	
+		number count = 0;
+
+		
+		dataForFile[0].each() using( temp )
+		{
+			tagName[] = Array.getName(dataForFile[0],count);
+			count++;
+		};
+
+		
+		resultXML += "<root>";
+		resultXML += "\n";
+
+		dataForFile.each() using ( tempArray )
+		{
+			resultXML += "<data>" ;	
+			resultXML += "\n";
+			tagName.each() using ( key ) 
+			{
+				resultXML += "<" + key + ">" + tempArray[ key ] + "</" + key + ">";	
+				resultXML += "\n";
+			};
+			resultXML +="</data>";	
+			resultXML += "\n";
+		};
+	
+		resultXML += "</root>";
+		resultXML += "\n";
+
+		fileName = export.name + currentTimeStamp + ".xml";
+		
+		saveExports(fileName, resultXML );
+
+		//if(export.emailExports == true)
+			sendExportToOwner(export, fileName);
+		
+		return fileName;
+	}
+	
+
+	function searchTerms( array questionList , string yesList , string noList )
+	{
+		array yesKeyWord , noKeyWord , finalQuesList,finalQuesList2;
+		number flag,flag2;
+		string question;
+		
+		if(yesList.length())
+			yesKeyWord = Regexp.split( "," , yesList );
+		if(noList.length())
+			noKeyWord  = Regexp.split( "," , noList );
+			
+		if( noKeyWord.size()!= 0 )
+		{
+			questionList.each() using ( tempRow )
+			{
+				question = tempRow[1];
+				flag = 1;
+				flag2 = 1;
+				
+				noKeyWord.each() using ( no )
+				{
+					
+					no = no.trim(' ');
+					
+					if( Regexp.match( no , question ) )
+					{
+						flag = 0;
+					}
+				};
+				
+				if( flag  )
+				{
+					finalQuesList[] = tempRow[0];
+					flag2=1;
+					yesKeyWord.each() using ( yes )
+					{
+						yes = yes.trim(' ');
+						
+						if( Regexp.match( yes , question ) == null )
+						{
+							flag2 = 0;
+						}
+						if( flag2  )
+						{
+							finalQuesList2[] = tempRow[0];
+						}
+					};
+					
+					
+				}
+				
+
+			};
+		
+			if( yesKeyWord.size()!= 0 )
+			{
+				
+				return finalQuesList2;
+			}
+		
+			else
+			{
+				return finalQuesList;
+			}
+		}
+
+		else
+		{
+			questionList.each() using ( tempRow )
+			{
+				Console.println( tempRow[0] );
+				question = tempRow[1];
+				flag = 1;
+								
+				yesKeyWord.each() using ( yes )
+				{
+					yes = yes.trim(' ');
+					
+					if( Regexp.match( yes , question ) == null )
+					{
+						flag = 0;
+					}
+				};
+					
+				Console.println(flag);
+				if( flag  )
+				{
+					finalQuesList[] = tempRow[0];
+				}
+			};
+			
+			return finalQuesList;
+		}
+		
+	}
+	
+	function searchEmailAddresses( array emailList , string yesEmail , string noEmail )
+	{
+		array yesEmailList , noEmailList , tempEmailList,finalEmailList;
+		string emailId;
+		number flag,id;
+		
+		if( yesEmail.length() )
+			yesEmailList = Regexp.split( "," , yesEmail );
+		if( noEmail.length() )
+			noEmailList = Regexp.split( "," , noEmail );
+		
+		if( emailList.size()!=0 && yesEmail.length()!=0 && noEmail.length()==0  )
+		{
+			return .yesEmailListing( emailList,yesEmailList );
+
+		}
+		
+		else if( emailList.size()!=0 && yesEmail.length()==0 && noEmail.length()!=0 )
+		{
+			return .noEmailListing( emailList,noEmailList );
+		
+		}
+		else if( emailList.size()!=0 && yesEmail.length()!=0 && yesEmail.length()!=0 )
+		{
+			return .bothEmailListing( emailList,noEmailList,yesEmailList );
+		}
+	}
+
+	function yesEmailListing( array emailList,array yesList)
+	{
+		number flag,id;
+		string emailId;
+		array finalEmailList;
+
+		emailList.each() using ( email )
+		{
+			emailId = email[1];
+			id =email[0];
+			//flag = 0;
+
+			yesList.each() using ( yes )
+			{
+				yes = yes.trim(' ');
+				//yes = yes.trim('*');
+				
+				if( Regexp.match( yes , emailId ) )
+				{		
+					flag = 1;
+				}
+				else
+				{
+					flag = 0;
+				}
+				
+				if( flag  )
+				{
+					finalEmailList[] = id;	
+				}
+			};
+	
+			
+		};
+		//Console.println( finalEmailList );
+		return finalEmailList;
+
+	}
+
+	function noEmailListing( array emailList,array noList)
+	{
+		number flag,id;
+		string emailId;
+		array finalEmailList;
+
+		emailList.each() using ( email )
+		{
+			id = email[0];
+			emailId = email[1];
+			noList.each() using ( no )
+			{
+				no = no.trim(' ');
+				if( Regexp.match( no , emailId ) )
+				{
+					flag = 0;
+				}
+				else{ flag =1;}
+
+				if( flag  )
+				{
+					finalEmailList[] = id;
+					
+				}
+				
+			};
+		};
+		
+		return finalEmailList;
+
+	}
+	
+	function bothEmailListing( array emailList,array noList,array yesList)
+	{
+			number flag1,flag2;
+			array finalEmailList,tempEmailList;
+			string emailId;
+		
+			emailList.each() using( email )
+			{
+				emailId = email[1];
+					
+				noList.each() using ( no )
+				{
+					no = no.trim(' ');
+					//no = no.trim('*');
+					
+					if( Regexp.match( no , emailId ) )
+					{		
+						flag1 = 0;
+					}
+					else
+					{
+						flag1 = 1;
+					}
+					
+					if( flag1  )
+					{	
+						tempEmailList[]= email[0];
+						//Console.println( flag );
+					}
+					
+				
+				};
+				
+				
+				
+				
+				if( tempEmailList.size()!=0 )
+				{
+					yesList.each() using ( yes )
+					{
+						
+						//yes = yes.trim('*');
+						
+						if( Regexp.match( yes , email[1] ) )
+						{		
+							flag2 = 1;
+						}
+						else
+						{
+							flag2=0;
+						}
+						
+						if( flag2  )
+						{
+							finalEmailList[] = email[0];	
+						}
+					};
+	
+					
+				}
+				
+			};
+		
+		return finalEmailList;
+
+	}
+
+
+	
+
 
 }
