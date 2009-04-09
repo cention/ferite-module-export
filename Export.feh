@@ -79,13 +79,26 @@ function listErrandsForExportScript (object exportObj) {
 	return errandsList;
 }
 
-function getErrandsInfo(array errandsList,array formatFields){
-	
+function processExportData(object exportObj, array errandsList,array formatFields, number exportFlag){
+		object exportInfo;
+		number totalErrands = 0;
+		number progress = 0;
+		number errandsProcessed = 0;
+		number _exportStart = 0, _exportEnd = 0;
+		string filename = "";
 		array exportErrands = [];
 		array temp = [];
+		
+		if(exportFlag){  //the export is for backend script.
+			_exportStart = Date.now();
+			totalErrands = list.size();
+		
+			exportInfo = Workflow.GeneratedExports.generateExportInfo(exportObj,filename,_exportStart,_exportEnd,totalErrands,progress);
+		}
 
 		errandsList.each() using (errandItem)	{
-			
+		errandsProcessed ++;	
+
 		object errandObj = Workflow.Errand.load(errandItem);
 
 		if(Array.keyExists(formatFields, "errandId") ) {
@@ -185,9 +198,47 @@ function getErrandsInfo(array errandsList,array formatFields){
 			
 			exportErrands[] = temp;
 			temp[] = "";
+
+		if(exportFlag){
+			progress = (errandsProcessed * 100) / totalErrands;
+			exportInfo.setValue('progress',progress);
+			exportInfo.save();
+		}
 	};
+
+	errandsProcessed = 0;
+	progress = 0;
+	
+	if(exportFlag){
+		saveExportsInfo(exportObj, exportInfo,  exportErrands);
+	}
 	return exportErrands;
 }
+
+function saveExportsInfo( object exportObj,object exportInfo, array exportErrands){
+		
+		string filename = "";
+		
+		
+		if(exportItem.type == 0 ){ // export to excel
+		
+			filename = generateXLS(exportErrands,exportObj);
+		}
+		else if(exportItem.type == 1 ){ // export to csv
+			
+			filename = generateCSV(exportErrands,exportObj);
+		}
+		else if(exportItem.type == 2 ){ // export to xml
+			
+			filename = generateXML(exportErrands,exportObj);
+		}
+
+		exportInfo.setValue('filename',filename);
+		exportInfo.setValue('finish', Date.now());
+
+		exportInfo.save();
+		
+	}
 
    function joinTwoArray( array a, array b ){
 
@@ -332,7 +383,7 @@ function getErrandsInfo(array errandsList,array formatFields){
 		addrFrom = "sys@cention.se";
 
  		if (addrToSend == "") {
-			Console.println("The export owner provides no email address.");
+			//Console.println("The export owner provides no email address.");
 			return;
 		}
 		else {
@@ -372,14 +423,14 @@ function getErrandsInfo(array errandsList,array formatFields){
  			mail.setValue( 'attachments', attachments );
  			mail.save();
  		
- 			Console.println("Finished.");
- 			Console.println("Sending E-mail to export owner...");
+ 			//Console.println("Finished.");
+ 			//Console.println("Sending E-mail to export owner...");
  
  		
  		
 			MailUtilities.sendMessage(connection,createExportMessage(mail) );
 		
- 			Console.println("Sending internal message to the user...");
+ 			//Console.println("Sending internal message to the user...");
 
 			sendInternalMsg(export);
 		}
@@ -440,7 +491,7 @@ Created by : Kreshano Dutta
 
 		saveExports(fileName, resultCSV );
 		
-		//if(export.emailExports == true)
+		if(export.emailflag == true)
 			sendExportToOwner(export, fileName);
 		
 		return fileName;
@@ -502,7 +553,7 @@ Created by : Kreshano Dutta
 		fileName = export.name + currentTimeStamp + ".xls";
 		
 		saveExports(fileName, resultXLS );
-		//if(export.emailExports == true)
+		if(export.emailflag == true)
 			sendExportToOwner(export, fileName);
 		
 		return fileName;
@@ -552,7 +603,7 @@ Created by : Kreshano Dutta
 		
 		saveExports(fileName, resultXML );
 
-		//if(export.emailExports == true)
+		if(export.emailflag == true)
 			sendExportToOwner(export, fileName);
 		
 		return fileName;
@@ -629,7 +680,7 @@ Created by : Kreshano Dutta
 		{
 			questionList.each() using ( tempRow )
 			{
-				Console.println( tempRow[0] );
+				
 				question = tempRow[1];
 				flag = 1;
 								
@@ -643,7 +694,7 @@ Created by : Kreshano Dutta
 					}
 				};
 					
-				Console.println(flag);
+				
 				if( flag  )
 				{
 					finalQuesList[] = tempRow[0];
@@ -717,7 +768,7 @@ Created by : Kreshano Dutta
 	
 			
 		};
-		//Console.println( finalEmailList );
+		
 		return finalEmailList;
 
 	}
@@ -781,7 +832,7 @@ Created by : Kreshano Dutta
 					if( flag1  )
 					{	
 						tempEmailList[]= email[0];
-						//Console.println( flag );
+						
 					}
 					
 				

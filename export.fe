@@ -1,0 +1,74 @@
+uses 'cmail';
+uses 'console';
+uses 'date';
+uses 'regexp';
+
+uses 'Export.feh';
+uses 'MailUtilities.feh';
+
+
+	function runExports() {
+		
+		array exports;
+		
+		exports = Workflow.Export.listExportRuns();
+		
+		
+		if(not exports){
+			//Console.println("No scheduled exports found.");
+			return ;
+		}
+		//else Console.println("" + exports.size() + " export(s) scheduled to run.");
+
+		/* all exports needing to be run */
+
+		exports.each() using (exportItem) {
+		
+		
+		//Console.println("Export:" + exportItem.name + " is processing...");
+
+		
+		array errandsList = Export.listErrandsForExportScript(exportItem);
+		array exportFormatFields = Export.listExportFormats(exportItem.exportFormat.id);
+
+		
+			
+		if(exportItem.allerrandsflag){
+			
+			Export.processExportData(exportItem,errandsList,exportFormatFields,1);
+		}
+
+		else { 	array allQuestions;
+		       	array allEmails;
+			object errandSearchObj;
+			array finalQuesList = [],finalEmailsList = [];
+			array finalErrandsList = [],tempErrandsList = [];
+			//Console.println("in search errands");
+			errandsList.each() using (errandId){
+				
+				errandSearchObj = Workflow.Errand.load(errandId);
+				allQuestions [] = [errandId,errandSearchObj.message.body];
+				allEmails [] = [errandId, errandSearchObj.mail.from.emailAddress];
+			};
+
+			if( exportItem.positivesearchterms !="" ||  exportItem.negativesearchterms != "")
+				finalQuesList = searchTerms( allQuestions , exportItem.positivesearchterms , exportItem.negativesearchterms);
+			
+			if (exportItem.positiveEmailAddList != "" || exportItem.negativeEmailAddList != "" )
+				finalEmailsList = searchEmailAddresses(allEmails, exportItem.positiveEmailAddList,exportItem.negativeEmailAddList);
+			
+			tempErrandsList = joinTwoArray(finalQuesList,finalEmailsList);
+			
+			finalErrandsList = removeDuplicate(tempErrandsList);
+			
+			Export.processExportData(exportItem,finalErrandsList,exportFormatFields,1);
+						
+		}
+
+	};
+
+}
+
+
+
+		
