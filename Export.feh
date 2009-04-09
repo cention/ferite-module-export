@@ -97,9 +97,10 @@ function processExportData(object exportObj, array errandsList,array formatField
 		}
 
 		errandsList.each() using (errandItem)	{
-		errandsProcessed ++;	
-
+		
 		object errandObj = Workflow.Errand.load(errandItem);
+		
+		errandsProcessed ++;	
 
 		if(Array.keyExists(formatFields, "errandId") ) {
 

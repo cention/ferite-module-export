@@ -3,7 +3,7 @@
 
 	<phase id="install">
 		<copy file="Export.feh" target="$(FeriteModuleSourceDir)" />
-		<copy file="exports.fe" target="$(FeriteModuleSourceDir)" />
+		<copy file="export.fe" target="$(FeriteModuleSourceDir)" />
 		<copy file="cention_export.xml" target="$(FeriteModuleDescriptionDir)" />
 		<execute program="feritedoc" arguments="--regenerate" />
 	</phase>
