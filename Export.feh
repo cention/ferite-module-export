@@ -26,6 +26,8 @@ function getSourceAreas (object exportAreas){
     			Array.del( formatFields, "_version" );
 		if( Array.keyExists(formatFields, "id") )
     			Array.del( formatFields, "id" );
+		if( Array.keyExists(formatFields, "name") )
+    			Array.del( formatFields, "name" );
 
 		return formatFields;
 }
@@ -41,7 +43,7 @@ function listErrandsForExportApp(object exportObj) {
 			return errandsList = ["Time interval is not specified for this export."];
 		}
 	else {	
-		Workflow.Errand.listLimitedErrandsByAreasAndByTimeInterval(getSourceAreas(exportObj),exportObj.start,exportObj.finish).each() using (errandItem)	{
+		Workflow.Errand.listLimitedErrandsByAreasAndByTimeInterval(self.getSourceAreas(exportObj),exportObj.start,exportObj.finish).each() using (errandItem)	{
 				errandsList[] = errandItem.id;
 		
 			};
@@ -65,7 +67,7 @@ function listErrandsForExportScript (object exportObj) {
 			return errandsList = ["Time interval is not specified for this export."];
 		}
 	else {	
-		Workflow.Errand.listErrandsByAreasAndByTimeInterval(getSourceAreas(exportObj),exportObj.start,exportObj.finish).each() using (errandItem)	{
+		Workflow.Errand.listErrandsByAreasAndByTimeInterval(self.getSourceAreas(exportObj),exportObj.start,exportObj.finish).each() using (errandItem)	{
 				errandsList[] = errandItem.id;
 		
 			};
@@ -160,7 +162,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 
 		if(Array.keyExists(formatFields, "agentid") ) {
 
-			temp[ "agentid" ] = (errandObj.owner?errandObj.owner.id: "null");
+			temp[ "agentid" ] = (errandObj.owner?errandObj.owner.id: 0);
 		
 		}
 
@@ -211,7 +213,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 	progress = 0;
 	
 	if(exportFlag){
-		saveExportsInfo(exportObj, exportInfo,  exportErrands);
+		self.saveExportsInfo(exportObj, exportInfo,  exportErrands);
 	}
 	return exportErrands;
 }
@@ -223,15 +225,15 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		
 		if(exportItem.type == 0 ){ // export to excel
 		
-			filename = generateXLS(exportErrands,exportObj);
+			filename = self.generateXLS(exportErrands,exportObj);
 		}
 		else if(exportItem.type == 1 ){ // export to csv
 			
-			filename = generateCSV(exportErrands,exportObj);
+			filename = self.generateCSV(exportErrands,exportObj);
 		}
 		else if(exportItem.type == 2 ){ // export to xml
 			
-			filename = generateXML(exportErrands,exportObj);
+			filename = self.generateXML(exportErrands,exportObj);
 		}
 
 		exportInfo.setValue('filename',filename);
