@@ -32,7 +32,7 @@ function getSourceAreas (object exportAreas){
 
 
 
-function listErrandsforExportApp(object exportObj) {
+function listErrandsForExportApp(object exportObj) {
 	
 	array errandsList= [];
 
