@@ -79,7 +79,7 @@ function listErrandsForExportScript (object exportObj) {
 	return errandsList;
 }
 
-function getErrandInfo(array errandsList,array formatFields){
+function getErrandsInfo(array errandsList,array formatFields){
 	
 		array exportErrands = [];
 		array temp = [];
