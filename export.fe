@@ -1,6 +1,7 @@
 uses "/cention/etc/webframework-config.feh";
 uses "webframework/webframework";
 uses "objrunsrv-workflow.feh";
+uses "workflow";
 
 uses 'cmail';
 uses 'console';
@@ -20,7 +21,7 @@ uses 'MailUtilities.feh';
 		
 		
 		if(not exports){
-			//Console.println("No scheduled exports found.");
+			Console.println("No scheduled exports found.");
 			return ;
 		}
 		//else Console.println("" + exports.size() + " export(s) scheduled to run.");
@@ -28,13 +29,14 @@ uses 'MailUtilities.feh';
 		/* all exports needing to be run */
 
 		exports.each() using (exportItem) {
+		array errandsList;
+		array exportFormatFields;
+		
+		Console.println("Export:" + exportItem.name + " is processing...");
 		
 		
-		//Console.println("Export:" + exportItem.name + " is processing...");
-
-		
-		array errandsList = Export.listErrandsForExportScript(exportItem);
-		array exportFormatFields = Export.listExportFormats(exportItem.exportFormat.id);
+		errandsList = Export.listErrandsForExportScript(exportItem,1);
+		exportFormatFields = Export.listExportFormats(exportItem.exportFormat.id);
 
 		
 			

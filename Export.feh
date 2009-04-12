@@ -1,6 +1,6 @@
 namespace Export {
 
-function getSourceAreas (object exportAreas){
+function getSourceAreas (object exportAreas, number exportFlag){
 		array idAreas = [];
 
 		exportAreas and exportAreas.areas.each() using (areaItems){
@@ -8,8 +8,10 @@ function getSourceAreas (object exportAreas){
 		};
 		
 		if (not idAreas){
-			
-			return idAreas = ["No source area list found for this export."];
+			if(exportFlag)
+				Console.println("No source area list found for this export.");
+			//return idAreas = ["No source area list found for this export."];
+			return [];
 		}
 
 		return idAreas;
@@ -34,21 +36,24 @@ function getSourceAreas (object exportAreas){
 
 
 
-function listErrandsForExportApp(object exportObj) {
+function listErrandsForExportApp(object exportObj, number exportFlag) {
 	
 	array errandsList= [];
 
 	if(exportObj.start == 0 || exportObj.finish == 0) {
-			
-			return errandsList = ["Time interval is not specified for this export."];
+			if(exportFlag)
+				Console.println("Time interval is not specified for this export.");
+			//return errandsList = ["Time interval is not specified for this export."];
+			return [];
 		}
 	else {	
-		Workflow.Errand.listLimitedErrandsByAreasAndByTimeInterval(self.getSourceAreas(exportObj),exportObj.start,exportObj.finish).each() using (errandItem)	{
+		Workflow.Errand.listLimitedErrandsByAreasAndByTimeInterval(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish).each() using (errandItem)	{
 				errandsList[] = errandItem.id;
 		
 			};
 		if(not errandsList) {
-			return errandsList = ["No errands found in the time interval for this export."];
+			//return errandsList = ["No errands found in the time interval for this export."];
+			return [];
 			
 		}
 	}
@@ -59,21 +64,26 @@ function listErrandsForExportApp(object exportObj) {
 
 
 
-function listErrandsForExportScript (object exportObj) {
+function listErrandsForExportScript (object exportObj,number exportFlag) {
 	array errandsList= [];
 	
 	if(exportObj.start == 0 || exportObj.finish == 0) {
-			
-			return errandsList = ["Time interval is not specified for this export."];
+			if(exportFlag)
+				Console.println("Time interval is not specified for this export.");
+			//return errandsList = ["Time interval is not specified for this export."];
+			return [];
 		}
 	else {	
-		Workflow.Errand.listErrandsByAreasAndByTimeInterval(self.getSourceAreas(exportObj),exportObj.start,exportObj.finish).each() using (errandItem)	{
+		Workflow.Errand.listErrandsByAreasAndByTimeInterval(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish).each() using (errandItem)	{
 				errandsList[] = errandItem.id;
 		
 			};
 		
 		if(not errandsList) {
-			return errandsList = ["No errands found in the time interval for this export."];
+			if(exportFlag)
+				Console.println("No errands found in the time interval for this export.");
+			//return errandsList = ["No errands found in the time interval for this export."];
+			return [];
 			
 		}
 	}
@@ -93,7 +103,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 		
 		if(exportFlag){  //the export is for backend script.
 			_exportStart = Date.now();
-			totalErrands = list.size();
+			totalErrands = errandsList.size();
 		
 			exportInfo = Workflow.GeneratedExports.generateExportInfo(exportObj,filename,_exportStart,_exportEnd,totalErrands,progress);
 		}
@@ -223,15 +233,15 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		string filename = "";
 		
 		
-		if(exportItem.type == 0 ){ // export to excel
+		if(exportObj.type == 0 ){ // export to excel
 		
 			filename = self.generateXLS(exportErrands,exportObj);
 		}
-		else if(exportItem.type == 1 ){ // export to csv
+		else if(exportObj.type == 1 ){ // export to csv
 			
 			filename = self.generateCSV(exportErrands,exportObj);
 		}
-		else if(exportItem.type == 2 ){ // export to xml
+		else if(exportObj.type == 2 ){ // export to xml
 			
 			filename = self.generateXML(exportErrands,exportObj);
 		}
@@ -386,7 +396,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		addrFrom = "sys@cention.se";
 
  		if (addrToSend == "") {
-			//Console.println("The export owner provides no email address.");
+			Console.println("The export owner provides no email address.");
 			return;
 		}
 		else {
@@ -426,14 +436,14 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
  			mail.setValue( 'attachments', attachments );
  			mail.save();
  		
- 			//Console.println("Finished.");
- 			//Console.println("Sending E-mail to export owner...");
+ 			Console.println("Finished.");
+ 			Console.println("Sending E-mail to export owner...");
  
  		
  		
 			MailUtilities.sendMessage(connection,createExportMessage(mail) );
 		
- 			//Console.println("Sending internal message to the user...");
+ 			Console.println("Sending internal message to the user...");
 
 			sendInternalMsg(export);
 		}
@@ -492,10 +502,10 @@ Created by : Kreshano Dutta
 		currentTimeStamp = "" + Date.GMTnow();
 		fileName = export.name + currentTimeStamp + ".csv";
 
-		saveExports(fileName, resultCSV );
+		self.saveExports(fileName, resultCSV );
 		
 		if(export.emailflag == true)
-			sendExportToOwner(export, fileName);
+			self.sendExportToOwner(export, fileName);
 		
 		return fileName;
 	}
@@ -555,9 +565,9 @@ Created by : Kreshano Dutta
 		
 		fileName = export.name + currentTimeStamp + ".xls";
 		
-		saveExports(fileName, resultXLS );
+		self.saveExports(fileName, resultXLS );
 		if(export.emailflag == true)
-			sendExportToOwner(export, fileName);
+			self.sendExportToOwner(export, fileName);
 		
 		return fileName;
 	}
@@ -604,10 +614,10 @@ Created by : Kreshano Dutta
 
 		fileName = export.name + currentTimeStamp + ".xml";
 		
-		saveExports(fileName, resultXML );
+		self.saveExports(fileName, resultXML );
 
 		if(export.emailflag == true)
-			sendExportToOwner(export, fileName);
+			self.sendExportToOwner(export, fileName);
 		
 		return fileName;
 	}
