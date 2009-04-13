@@ -52,6 +52,8 @@ function listErrandsForExportApp(object exportObj, number exportFlag) {
 		
 			};
 		if(not errandsList) {
+			if(exportFlag)
+				Console.println("No errands found in the time interval for this export.");
 			//return errandsList = ["No errands found in the time interval for this export."];
 			return [];
 			
@@ -146,7 +148,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 
 		if(Array.keyExists(formatFields, "answer") ) {
 
-			temp[ "answer" ] = "" +(errandObj.answer ? errandObj.answer.message.body : "null");
+			temp[ "answer" ] = "" +(errandObj.answer ? (errandObj.answer.message?errandObj.answer.message.body:"null") : "null");
 
 		}
 		
@@ -391,7 +393,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		object connection = new Mail.Connection();
 	
 		
-		addrToSend = (exportOwnerEmail.person ? exportOwnerEmail.person.email.emailAddress:"");
+		addrToSend = (exportOwnerEmail.person ? (exportOwnerEmail.person.email?exportOwnerEmail.person.email.emailAddress:""):"");
 
 		addrFrom = "sys@cention.se";
 
