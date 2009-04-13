@@ -359,14 +359,14 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		sentMessage.setValue( 'type', Workflow.InternalMessageType.create( 'Urgent' ) );
 		sentMessage.setValue( 'timestampSent', Date.GMTnow() );
 		sentMessage.setValue( 'message', simpleMessage );
-		sentMessage.setValue( 'folder', Workflow.InternalFolder.create( 'Sent' ) );
+		sentMessage.setValue( 'folder', Workflow.InternalFolder.fetch(Workflow.InternalFolder.SENT) );
 		sentMessage.setValue( 'origin', objSender );
 		sentMessage.save();
 		
 		inboxMessage.setValue( 'type', Workflow.InternalMessageType.create( 'Urgent' ) );
 		inboxMessage.setValue( 'timestampSent', Date.GMTnow() );
 		inboxMessage.setValue( 'message', simpleMessage );
-		inboxMessage.setValue( 'folder', Workflow.InternalFolder.create( 'Inbox' ) );
+		inboxMessage.setValue( 'folder', Workflow.InternalFolder.fetch(Workflow.InternalFolder.INBOX));
 		inboxMessage.setValue( 'targets', [exportOwnerUserObj]);
 		inboxMessage.save();
 
@@ -447,7 +447,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		
  			Console.println("Sending internal message to the user...");
 
-			sendInternalMsg(export);
+			self.sendInternalMsg(export);
 		}
 
 	}
