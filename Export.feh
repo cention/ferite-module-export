@@ -443,7 +443,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
  
  		
  		
-			MailUtilities.sendMessage(connection,createExportMessage(mail) );
+			MailUtilities.sendMessage(connection,self.createExportMessage(mail) );
 		
  			Console.println("Sending internal message to the user...");
 
@@ -481,7 +481,7 @@ Created by : Kreshano Dutta
 		number count = 0;
 
 		
-		dataForFile[0].each() using( temp )
+		dataForFile and dataForFile[0].each() using( temp )
 		{
 			collumnHeader[] = Array.getName(dataForFile[0],count);
 			count++;
@@ -536,7 +536,7 @@ Created by : Kreshano Dutta
 		resultXLS += "<tr>\n";
 
 		
-		dataForFile[0].each() using( temp )
+		dataForFile and dataForFile[0].each() using( temp )
 		{
 			collumnHeader[] = Array.getName(dataForFile[0],count);
 			count++;
@@ -588,7 +588,7 @@ Created by : Kreshano Dutta
 		number count = 0;
 
 		
-		dataForFile[0].each() using( temp )
+		dataForFile and dataForFile[0].each() using( temp )
 		{
 			tagName[] = Array.getName(dataForFile[0],count);
 			count++;
