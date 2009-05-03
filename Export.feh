@@ -763,7 +763,7 @@ Created by : Kreshano Dutta
 
 			yesList.each() using ( yes )
 			{
-				yes = yes.trim(' ');
+				//yes = yes.trim(' ');
 				//yes = yes.trim('*');
 				
 				if( Regexp.match( yes , emailId ) )
@@ -800,7 +800,7 @@ Created by : Kreshano Dutta
 			emailId = email[1];
 			noList.each() using ( no )
 			{
-				no = no.trim(' ');
+				//no = no.trim(' ');
 				if( Regexp.match( no , emailId ) )
 				{
 					flag = 0;
