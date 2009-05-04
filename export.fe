@@ -59,14 +59,14 @@ uses 'MailUtilities.feh';
 			};
 
 			if( exportItem.positivesearchterms !="" ||  exportItem.negativesearchterms != "")
-				finalQuesList = searchTerms( allQuestions , exportItem.positivesearchterms , exportItem.negativesearchterms);
+				finalQuesList = Export.searchTerms( allQuestions , exportItem.positivesearchterms , exportItem.negativesearchterms);
 			
 			if (exportItem.positiveEmailAddList != "" || exportItem.negativeEmailAddList != "" )
-				finalEmailsList = searchEmailAddresses(allEmails, exportItem.positiveEmailAddList,exportItem.negativeEmailAddList);
+				finalEmailsList = Export.searchEmailAddresses(allEmails, exportItem.positiveEmailAddList,exportItem.negativeEmailAddList);
 			
-			tempErrandsList = joinTwoArray(finalQuesList,finalEmailsList);
+			tempErrandsList = Export.joinTwoArray(finalQuesList,finalEmailsList);
 			
-			finalErrandsList = removeDuplicate(tempErrandsList);
+			finalErrandsList = Export.removeDuplicate(tempErrandsList);
 			
 			Export.processExportData(exportItem,finalErrandsList,exportFormatFields,1);
 						
