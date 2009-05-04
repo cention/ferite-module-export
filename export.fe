@@ -35,7 +35,7 @@ uses 'MailUtilities.feh';
 		Console.println("Export:" + exportItem.name + " is processing...");
 		
 		
-		errandsList = Export.listErrandsForExportScript(exportItem,1);
+		errandsList = Export.listErrandsForExport(exportItem,1);
 		exportFormatFields = Export.listExportFormats(exportItem.exportFormat.id);
 
 		

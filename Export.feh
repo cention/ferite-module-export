@@ -34,27 +34,35 @@ function getSourceAreas (object exportAreas, number exportFlag){
 		return formatFields;
 }
 
-
-
-function listErrandsForExportApp(object exportObj, number exportFlag) {
+function listErrandsForExport(object exportObj, number exportFlag) {
 	
 	array errandsList= [];
 
 	if(exportObj.start == 0 || exportObj.finish == 0) {
 			if(exportFlag)
 				Console.println("Time interval is not specified for this export.");
-			//return errandsList = ["Time interval is not specified for this export."];
-			return [];
-		}
+				return [];
+	}
+	
 	else {	
-		Workflow.Errand.listLimitedErrandsByAreasAndByTimeInterval(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish).each() using (errandItem)	{
+		if(exportFlag == 0){
+			Workflow.Errand.listLimitedErrandsByAreasAndByTimeInterval(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish).each() using (errandItem)	{
 				errandsList[] = errandItem.id;
 		
 			};
+
+		}
+		else if (exportFlag == 1){
+
+			Workflow.Errand.listErrandsByAreasAndByTimeInterval(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish).each() using (errandItem)	{
+				errandsList[] = errandItem.id;
+		
+			};
+
+		}
 		if(not errandsList) {
 			if(exportFlag)
 				Console.println("No errands found in the time interval for this export.");
-			//return errandsList = ["No errands found in the time interval for this export."];
 			return [];
 			
 		}
@@ -62,35 +70,6 @@ function listErrandsForExportApp(object exportObj, number exportFlag) {
 
 	return errandsList;
 
-}
-
-
-
-function listErrandsForExportScript (object exportObj,number exportFlag) {
-	array errandsList= [];
-	
-	if(exportObj.start == 0 || exportObj.finish == 0) {
-			if(exportFlag)
-				Console.println("Time interval is not specified for this export.");
-			//return errandsList = ["Time interval is not specified for this export."];
-			return [];
-		}
-	else {	
-		Workflow.Errand.listErrandsByAreasAndByTimeInterval(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish).each() using (errandItem)	{
-				errandsList[] = errandItem.id;
-		
-			};
-		
-		if(not errandsList) {
-			if(exportFlag)
-				Console.println("No errands found in the time interval for this export.");
-			//return errandsList = ["No errands found in the time interval for this export."];
-			return [];
-			
-		}
-	}
-	
-	return errandsList;
 }
 
 function processExportData(object exportObj, array errandsList,array formatFields, number exportFlag){
