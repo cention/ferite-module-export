@@ -17,6 +17,46 @@ function getSourceAreas (object exportAreas, number exportFlag){
 		return idAreas;
 }
 
+function listNegativeEmails(object exportObj, array searchEmailList, number exportFlag) {
+	array tempEmailList = [];
+
+	if(exportFlag == 0){
+	Workflow.Errand.listLimitedErrandsByNegativeEmails(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,searchEmailList).each() using (value){
+				    tempEmailList[] = value.id;
+
+				};
+	}
+	else if(exportFlag == 1){
+	
+		Workflow.Errand.listErrandsByNegativeEmails(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,searchEmailList).each() using (value){
+				    tempEmailList[] = value.id;
+
+				};
+	}	
+	
+
+	return tempEmailList;
+}
+
+function listPositiveEmails(object exportObj, array searchEmailList, number exportFlag ) {		array tempEmailList = [];
+
+	if(exportFlag == 0){
+	Workflow.Errand.listLimitedErrandsByPositiveEmails(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,searchEmailList).each() using (value){
+				    tempEmailList[] = value.id;
+
+				};
+	}
+	else if(exportFlag == 1){
+	
+		Workflow.Errand.listErrandsByPositiveEmails(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,searchEmailList).each() using (value){
+				    tempEmailList[] = value.id;
+
+				};
+	}	
+	
+
+	return tempEmailList;
+}
 
  function listExportFormats(number idformat){
 
@@ -699,7 +739,16 @@ Created by : Kreshano Dutta
 		}
 		
 	}
-	
+
+	function getEmailsList(string list){
+
+		array emailList;
+
+		if( list.length() )
+			emailList = Regexp.split( "," , list );
+		return emailList;
+	}
+
 	function searchEmailAddresses( array emailList , string yesEmail , string noEmail )
 	{
 		array yesEmailList , noEmailList , tempEmailList,finalEmailList;

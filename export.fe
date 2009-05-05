@@ -45,30 +45,28 @@ uses 'MailUtilities.feh';
 			Export.processExportData(exportItem,errandsList,exportFormatFields,1);
 		}
 
-		else { 	array allQuestions;
-		       	array allEmails;
-			object errandSearchObj;
-			array finalQuesList = [],finalEmailsList = [];
-			array finalErrandsList = [],tempErrandsList = [];
-			//Console.println("in search errands");
-			errandsList.each() using (errandId){
-				
-				errandSearchObj = Workflow.Errand.load(errandId);
-				allQuestions [] = [errandId,errandSearchObj.message.body];
-				allEmails [] = [errandId, errandSearchObj.mail.from.emailAddress];
-			};
+		else { 	
+			array searchPosEmailList = [],searchNegEmailList = [];
+			array tempNegEmailList = [],tempPosEmailList = [];
+			array tempErrandsListforEmails = [],finalErrandsListforEmails = [];
 
-			if( exportItem.positivesearchterms !="" ||  exportItem.negativesearchterms != "")
-				finalQuesList = Export.searchTerms( allQuestions , exportItem.positivesearchterms , exportItem.negativesearchterms);
+			if ( exportItem.negativeEmailAddList != "" ){
+				searchNegEmailList = Export.getEmailsList(exportItem.negativeEmailAddList);
 			
-			if (exportItem.positiveEmailAddList != "" || exportItem.negativeEmailAddList != "" )
-				finalEmailsList = Export.searchEmailAddresses(allEmails, exportItem.positiveEmailAddList,exportItem.negativeEmailAddList);
+				tempNegEmailList = Export.listNegativeEmails(exportItem,searchNegEmailList, 1);
+			}
+
+			if ( exportItem.positiveEmailAddList != "" ){
+				searchPosEmailList = Export.getEmailsList(exportItem.positiveEmailAddList);
 			
-			tempErrandsList = Export.joinTwoArray(finalQuesList,finalEmailsList);
+				tempPosEmailList = Export.listPositiveEmails(exportItem,searchPosEmailList,1);
+			}
+
+			tempErrandsListforEmails = Export.joinTwoArray(tempNegEmailList,tempPosEmailList);
 			
-			finalErrandsList = Export.removeDuplicate(tempErrandsList);
-			
-			Export.processExportData(exportItem,finalErrandsList,exportFormatFields,1);
+			finalErrandsListforEmails = Export.removeDuplicate(tempErrandsListforEmails);
+
+			Export.processExportData(exportItem,finalErrandsListforEmails,exportFormatFields,1);
 						
 		}
 
