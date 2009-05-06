@@ -17,7 +17,18 @@ function getSourceAreas (object exportAreas, number exportFlag){
 		return idAreas;
 }
 
-function listNegativeEmails(object exportObj, array searchEmailList, number exportFlag) {
+
+ function getParsedData(string list){
+
+		array searchData;
+
+		if( list.length() )
+			searchData = Regexp.split( "," , list );
+		return searchData;
+	}
+
+
+ function errandsByNegativeEmails(object exportObj, array searchEmailList, number exportFlag) {
 	array tempEmailList = [];
 
 	if(exportFlag == 0){
@@ -28,7 +39,7 @@ function listNegativeEmails(object exportObj, array searchEmailList, number expo
 	}
 	else if(exportFlag == 1){
 	
-		Workflow.Errand.listErrandsByNegativeEmails(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,searchEmailList).each() using (value){
+		Workflow.Errand.listErrandsByNegativeEmails(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish,searchEmailList).each() using (value){
 				    tempEmailList[] = value.id;
 
 				};
@@ -38,7 +49,7 @@ function listNegativeEmails(object exportObj, array searchEmailList, number expo
 	return tempEmailList;
 }
 
-function listPositiveEmails(object exportObj, array searchEmailList, number exportFlag ) {		array tempEmailList = [];
+ function errandsByPositiveEmails(object exportObj, array searchEmailList, number exportFlag ) {		array tempEmailList = [];
 
 	if(exportFlag == 0){
 	Workflow.Errand.listLimitedErrandsByPositiveEmails(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,searchEmailList).each() using (value){
@@ -48,7 +59,7 @@ function listPositiveEmails(object exportObj, array searchEmailList, number expo
 	}
 	else if(exportFlag == 1){
 	
-		Workflow.Errand.listErrandsByPositiveEmails(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,searchEmailList).each() using (value){
+		Workflow.Errand.listErrandsByPositiveEmails(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish,searchEmailList).each() using (value){
 				    tempEmailList[] = value.id;
 
 				};
@@ -57,6 +68,53 @@ function listPositiveEmails(object exportObj, array searchEmailList, number expo
 
 	return tempEmailList;
 }
+
+
+ function errandsByPositiveTerms(object exportObj, array searchTerms, number exportFlag){
+		
+	array tempTermsList = [];
+
+	if(exportFlag == 0){
+	Workflow.Errand.listLimitedErrandsByPositiveTerms(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,searchTerms).each() using (value){
+				    tempTermsList[] = value.id;
+
+				};
+	}
+	else if(exportFlag == 1){
+	
+		Workflow.Errand.listErrandsByPositiveTerms(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish,searchTerms).each() using (value){
+				    tempTermsList[] = value.id;
+
+				};
+	}	
+	
+
+	return tempTermsList;
+}
+
+
+  function errandsByNegativeTerms(object exportObj, array searchTerms, number exportFlag){
+		
+	array tempTermsList = [];
+
+	if(exportFlag == 0){
+	Workflow.Errand.listLimitedErrandsByNegativeTerms(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,searchTerms).each() using (value){
+				    tempTermsList[] = value.id;
+
+				};
+	}
+	else if(exportFlag == 1){
+	
+		Workflow.Errand.listErrandsByNegativeTerms(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish,searchTerms).each() using (value){
+				    tempTermsList[] = value.id;
+
+				};
+	}	
+	
+
+	return tempTermsList;
+}
+
 
  function listExportFormats(number idformat){
 
@@ -740,182 +798,8 @@ Created by : Kreshano Dutta
 		
 	}
 
-	function getEmailsList(string list){
-
-		array emailList;
-
-		if( list.length() )
-			emailList = Regexp.split( "," , list );
-		return emailList;
-	}
-
-	function searchEmailAddresses( array emailList , string yesEmail , string noEmail )
-	{
-		array yesEmailList , noEmailList , tempEmailList,finalEmailList;
-		string emailId;
-		number flag,id;
-		
-		if( yesEmail.length() )
-			yesEmailList = Regexp.split( "," , yesEmail );
-		if( noEmail.length() )
-			noEmailList = Regexp.split( "," , noEmail );
-		
-		if( emailList.size()!=0 && yesEmail.length()!=0 && noEmail.length()==0  )
-		{
-			return .yesEmailListing( emailList,yesEmailList );
-
-		}
-		
-		else if( emailList.size()!=0 && yesEmail.length()==0 && noEmail.length()!=0 )
-		{
-			return .noEmailListing( emailList,noEmailList );
-		
-		}
-		else if( emailList.size()!=0 && yesEmail.length()!=0 && yesEmail.length()!=0 )
-		{
-			return .bothEmailListing( emailList,noEmailList,yesEmailList );
-		}
-	}
-
-	function yesEmailListing( array emailList,array yesList)
-	{
-		number flag,id;
-		string emailId;
-		array finalEmailList;
-
-		emailList.each() using ( email )
-		{
-			emailId = email[1];
-			id =email[0];
-			//flag = 0;
-
-			yesList.each() using ( yes )
-			{
-				//yes = yes.trim(' ');
-				//yes = yes.trim('*');
-				
-				if( Regexp.match( yes , emailId ) )
-				{		
-					flag = 1;
-				}
-				else
-				{
-					flag = 0;
-				}
-				
-				if( flag  )
-				{
-					finalEmailList[] = id;	
-				}
-			};
 	
-			
-		};
-		
-		return finalEmailList;
-
-	}
-
-	function noEmailListing( array emailList,array noList)
-	{
-		number flag,id;
-		string emailId;
-		array finalEmailList;
-
-		emailList.each() using ( email )
-		{
-			id = email[0];
-			emailId = email[1];
-			noList.each() using ( no )
-			{
-				//no = no.trim(' ');
-				if( Regexp.match( no , emailId ) )
-				{
-					flag = 0;
-				}
-				else{ flag =1;}
-
-				if( flag  )
-				{
-					finalEmailList[] = id;
-					
-				}
-				
-			};
-		};
-		
-		return finalEmailList;
-
-	}
 	
-	function bothEmailListing( array emailList,array noList,array yesList)
-	{
-			number flag1,flag2;
-			array finalEmailList,tempEmailList;
-			string emailId;
-		
-			emailList.each() using( email )
-			{
-				emailId = email[1];
-					
-				noList.each() using ( no )
-				{
-					no = no.trim(' ');
-					//no = no.trim('*');
-					
-					if( Regexp.match( no , emailId ) )
-					{		
-						flag1 = 0;
-					}
-					else
-					{
-						flag1 = 1;
-					}
-					
-					if( flag1  )
-					{	
-						tempEmailList[]= email[0];
-						
-					}
-					
-				
-				};
-				
-				
-				
-				
-				if( tempEmailList.size()!=0 )
-				{
-					yesList.each() using ( yes )
-					{
-						
-						//yes = yes.trim('*');
-						
-						if( Regexp.match( yes , email[1] ) )
-						{		
-							flag2 = 1;
-						}
-						else
-						{
-							flag2=0;
-						}
-						
-						if( flag2  )
-						{
-							finalEmailList[] = email[0];	
-						}
-					};
-	
-					
-				}
-				
-			};
-		
-		return finalEmailList;
-
-	}
-
-
 	
 
 
