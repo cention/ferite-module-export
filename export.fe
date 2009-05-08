@@ -46,42 +46,19 @@ uses 'MailUtilities.feh';
 		}
 
 		else { 	
-			array searchPosTerms = [],searchNegTerms = [],tempPosTermsList =[],tempNegTermsList = [];
-			array searchPosEmailList = [],searchNegEmailList = [], tempPosEmailList = [], tempNegEmailList;
-			array tempErrandsListforEmails = [],tempErrandsListforTerms = [];
-			array finalErrandsList = [], searchErrandsList = [];
+			array searchPosEmailList = [],searchNegEmailList = [],tempEmailList =[];
 
-			if ( exportItem.negativeEmailAddList != "" ){
-				searchNegEmailList = Export.getParsedData(exportItem.negativeEmailAddList);
+			if ( exportItem.negativeEmailAddList != "" || exportItem.negativeEmailAddList != ""){
+				
+			searchPosEmailList = Export.getParsedData(exportItem.positiveEmailAddList);
+
+			searchNegEmailList = Export.getParsedData(exportItem.negativeEmailAddList);
+
+			tempEmailList = Export.listErrandsByEmails(exportItem,searchPosEmailList,searchNegEmailList, 0);
 			
-				tempNegEmailList = Export.errandsByNegativeEmails(exportItem,searchNegEmailList, 1);
 			}
-
-			if ( exportItem.positiveEmailAddList != "" ){
-				searchPosEmailList = Export.getParsedData(exportItem.positiveEmailAddList);
-			
-				tempPosEmailList = Export.errandsByPositiveEmails(exportItem,searchPosEmailList,1);
-			}
-
-			if( exportItem.positivesearchterms != ""){
-				searchPosTerms = Export.getParsedData(exportItem.positivesearchterms);
-				tempPosTermsList = Export.errandsByPositiveTerms(exportItem,searchPosTerms, 1);
-			}
-			
-			if( exportItem.negativesearchterms != ""){
-				searchNegTerms = Export.getParsedData(exportItem.negativesearchterms);
-				tempNegTermsList = Export.errandsByNegativeTerms(exportItem,searchNegTerms, 1);
-			}	
-
-			tempErrandsListforEmails = Export.joinTwoArray(tempNegEmailList,tempPosEmailList);
-			
-			tempErrandsListforTerms = Export.joinTwoArray(tempPosTermsList,tempNegTermsList);
-
-			finalErrandsList = Export.joinTwoArray(tempErrandsListforEmails,tempErrandsListforTerms);
-
-			searchErrandsList = Export.removeDuplicate(finalErrandsList);
-
-			Export.processExportData(exportItem,searchErrandsList,exportFormatFields,1);
+				
+			Export.processExportData(exportItem,tempEmailList,exportFormatFields,1);
 						
 		}
 

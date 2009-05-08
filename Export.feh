@@ -28,38 +28,20 @@ function getSourceAreas (object exportAreas, number exportFlag){
 	}
 
 
- function errandsByNegativeEmails(object exportObj, array searchEmailList, number exportFlag) {
+ 
+function listErrandsByEmails(object exportObj, array yesEmailList, array noEmailList, number exportFlag ) {		
+
 	array tempEmailList = [];
 
 	if(exportFlag == 0){
-	Workflow.Errand.listLimitedErrandsByNegativeEmails(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,searchEmailList).each() using (value){
+	Workflow.Errand.listLimitedErrandsByEmailsForExport(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,yesEmailList,noEmailList).each() using (value){
 				    tempEmailList[] = value.id;
 
 				};
 	}
 	else if(exportFlag == 1){
 	
-		Workflow.Errand.listErrandsByNegativeEmails(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish,searchEmailList).each() using (value){
-				    tempEmailList[] = value.id;
-
-				};
-	}	
-	
-
-	return tempEmailList;
-}
-
- function errandsByPositiveEmails(object exportObj, array searchEmailList, number exportFlag ) {		array tempEmailList = [];
-
-	if(exportFlag == 0){
-	Workflow.Errand.listLimitedErrandsByPositiveEmails(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,searchEmailList).each() using (value){
-				    tempEmailList[] = value.id;
-
-				};
-	}
-	else if(exportFlag == 1){
-	
-		Workflow.Errand.listErrandsByPositiveEmails(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish,searchEmailList).each() using (value){
+		Workflow.Errand.listErrandsByEmailsForExport(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish,yesEmailList,noEmailList).each() using (value){
 				    tempEmailList[] = value.id;
 
 				};
@@ -67,52 +49,6 @@ function getSourceAreas (object exportAreas, number exportFlag){
 	
 
 	return tempEmailList;
-}
-
-
- function errandsByPositiveTerms(object exportObj, array searchTerms, number exportFlag){
-		
-	array tempTermsList = [];
-
-	if(exportFlag == 0){
-	Workflow.Errand.listLimitedErrandsByPositiveTerms(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,searchTerms).each() using (value){
-				    tempTermsList[] = value.id;
-
-				};
-	}
-	else if(exportFlag == 1){
-	
-		Workflow.Errand.listErrandsByPositiveTerms(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish,searchTerms).each() using (value){
-				    tempTermsList[] = value.id;
-
-				};
-	}	
-	
-
-	return tempTermsList;
-}
-
-
-  function errandsByNegativeTerms(object exportObj, array searchTerms, number exportFlag){
-		
-	array tempTermsList = [];
-
-	if(exportFlag == 0){
-	Workflow.Errand.listLimitedErrandsByNegativeTerms(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,searchTerms).each() using (value){
-				    tempTermsList[] = value.id;
-
-				};
-	}
-	else if(exportFlag == 1){
-	
-		Workflow.Errand.listErrandsByNegativeTerms(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish,searchTerms).each() using (value){
-				    tempTermsList[] = value.id;
-
-				};
-	}	
-	
-
-	return tempTermsList;
 }
 
 
@@ -144,7 +80,7 @@ function listErrandsForExport(object exportObj, number exportFlag) {
 	
 	else {	
 		if(exportFlag == 0){
-			Workflow.Errand.listLimitedErrandsByAreasAndByTimeInterval(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish).each() using (errandItem)	{
+			Workflow.Errand.listLimitedErrandsWithinIntervalForExport(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish).each() using (errandItem)	{
 				errandsList[] = errandItem.id;
 		
 			};
@@ -152,7 +88,7 @@ function listErrandsForExport(object exportObj, number exportFlag) {
 		}
 		else if (exportFlag == 1){
 
-			Workflow.Errand.listErrandsByAreasAndByTimeInterval(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish).each() using (errandItem)	{
+			Workflow.Errand.listErrandsWithinIntervalForExport(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish).each() using (errandItem)	{
 				errandsList[] = errandItem.id;
 		
 			};
@@ -332,7 +268,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		
 	}
 
-   function joinTwoArray( array a, array b ){
+   function mergeList( array a, array b ){
 
 		Array.each( b )using( bValue ){
 
@@ -701,102 +637,6 @@ Created by : Kreshano Dutta
 		return fileName;
 	}
 	
-
-	function searchTerms( array questionList , string yesList , string noList )
-	{
-		array yesKeyWord , noKeyWord , finalQuesList,finalQuesList2;
-		number flag,flag2;
-		string question;
-		
-		if(yesList.length())
-			yesKeyWord = Regexp.split( "," , yesList );
-		if(noList.length())
-			noKeyWord  = Regexp.split( "," , noList );
-			
-		if( noKeyWord.size()!= 0 )
-		{
-			questionList.each() using ( tempRow )
-			{
-				question = tempRow[1];
-				flag = 1;
-				flag2 = 1;
-				
-				noKeyWord.each() using ( no )
-				{
-					
-					no = no.trim(' ');
-					
-					if( Regexp.match( no , question ) )
-					{
-						flag = 0;
-					}
-				};
-				
-				if( flag  )
-				{
-					finalQuesList[] = tempRow[0];
-					flag2=1;
-					yesKeyWord.each() using ( yes )
-					{
-						yes = yes.trim(' ');
-						
-						if( Regexp.match( yes , question ) == null )
-						{
-							flag2 = 0;
-						}
-						if( flag2  )
-						{
-							finalQuesList2[] = tempRow[0];
-						}
-					};
-					
-					
-				}
-				
-
-			};
-		
-			if( yesKeyWord.size()!= 0 )
-			{
-				
-				return finalQuesList2;
-			}
-		
-			else
-			{
-				return finalQuesList;
-			}
-		}
-
-		else
-		{
-			questionList.each() using ( tempRow )
-			{
-				
-				question = tempRow[1];
-				flag = 1;
-								
-				yesKeyWord.each() using ( yes )
-				{
-					yes = yes.trim(' ');
-					
-					if( Regexp.match( yes , question ) == null )
-					{
-						flag = 0;
-					}
-				};
-					
-				
-				if( flag  )
-				{
-					finalQuesList[] = tempRow[0];
-				}
-			};
-			
-			return finalQuesList;
-		}
-		
-	}
 
 	
 	
