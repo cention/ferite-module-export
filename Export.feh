@@ -47,7 +47,7 @@ array exportAreas = self.getSourceAreas(exportObj,0);
 	positive = positive_list_email.append(positive_list_body);
 	negative = negative_list_email.append(negative_list_body);
 	
-	return positive;
+	
 // We can now do the queries over the errands that match
 
 	if(searchFlag == 0){
