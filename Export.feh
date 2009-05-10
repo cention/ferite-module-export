@@ -28,28 +28,40 @@ function getSourceAreas (object exportAreas, number exportFlag){
 	}
 
 
- 
-function listErrandsByEmails(object exportObj, array yesEmailList, array noEmailList, number exportFlag ) {		
+function listErrandsBySearch(object exportObj, array p_email_list, array n_email_list, array p_word_list, array n_word_list, number searchFlag){
 
-	array tempEmailList = [];
+array errandsList,positive_list_email,negative_list_email,positive_list_body,negative_list_body ;
+array postive,negative;
+return p_email_list;
+	positive_list_email = Workflow.Errand.errandsForMatchingEmailAddress('(' + p_email_list.join('|') + ')');
+negative_list_email = Workflow.Errand.errandsForMatchingEmailAddress('(' + n_email_list.join('|') + ')');
 
-	if(exportFlag == 0){
-	Workflow.Errand.listLimitedErrandsByEmailsForExport(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,yesEmailList,noEmailList).each() using (value){
-				    tempEmailList[] = value.id;
+	positive_list_body = Workflow.Errand.errandsForMatchingEmailBody('(' + p_word_list.join('|') + ')');
+	negative_list_body = Workflow.Errand.errandsForMatchingEmailBody('(' + n_word_list.join('|') + ')');
 
-				};
-	}
-	else if(exportFlag == 1){
+
+// Join the lists
+	positive = positive_list_email.append(positive_list_body);
+	negative = negative_list_email.append(negative_list_body);
 	
-		Workflow.Errand.listErrandsByEmailsForExport(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish,yesEmailList,noEmailList).each() using (value){
-				    tempEmailList[] = value.id;
+	return positive;
+// We can now do the queries over the errands that match
 
-				};
-	}	
+	if(searchFlag == 0){
 	
+	errandsList = Workflow.Errand.listErrandsForExportPreview(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])
+	);
 
-	return tempEmailList;
 }
+
+	else errandsList = 	   Workflow.Errand.listErrandsForExportScript(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])
+);
+
+	return errandsList;
+
+}
+
+
 
 
  function listExportFormats(number idformat){
@@ -68,7 +80,7 @@ function listErrandsByEmails(object exportObj, array yesEmailList, array noEmail
 		return formatFields;
 }
 
-function listErrandsForExport(object exportObj, number exportFlag) {
+function listErrandsByAllErrandsFlag(object exportObj, number exportFlag) {
 	
 	array errandsList= [];
 
@@ -115,7 +127,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 		string filename = "";
 		array exportErrands = [];
 		array temp = [];
-		
+		object errandObj;
 		if(exportFlag){  //the export is for backend script.
 			_exportStart = Date.now();
 			totalErrands = errandsList.size();
@@ -125,7 +137,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 
 		errandsList.each() using (errandItem)	{
 		
-		object errandObj = Workflow.Errand.load(errandItem);
+		errandObj = Workflow.Errand.load(errandItem);
 		
 		errandsProcessed ++;	
 
@@ -451,6 +463,10 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
  			mail.setValue( 'attachments', attachments );
  			mail.save();
  		
+			// the export is finished and set the export scheduled flag is set to false
+			export.setValue('shouldgenerateflag', false);
+			export.save();
+
  			Console.println("Finished.");
  			Console.println("Sending E-mail to export owner...");
  

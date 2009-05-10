@@ -35,30 +35,32 @@ uses 'MailUtilities.feh';
 		Console.println("Export:" + exportItem.name + " is processing...");
 		
 		
-		errandsList = Export.listErrandsForExport(exportItem,1);
+		
 		exportFormatFields = Export.listExportFormats(exportItem.exportFormat.id);
 
 		
 			
 		if(exportItem.allerrandsflag){
-			
+			errandsList = Export.listErrandsByAllErrandsFlag(exportItem,1);
 			Export.processExportData(exportItem,errandsList,exportFormatFields,1);
 		}
 
 		else { 	
-			array searchPosEmailList = [],searchNegEmailList = [],tempEmailList =[];
+			array searchPosEmailList = [],searchNegEmailList = [];
+			array searchPosTerms = [], searchNegTerms = [];
+			array finalErrandsList;
 
-			if ( exportItem.negativeEmailAddList != "" || exportItem.negativeEmailAddList != ""){
-				
+
 			searchPosEmailList = Export.getParsedData(exportItem.positiveEmailAddList);
-
 			searchNegEmailList = Export.getParsedData(exportItem.negativeEmailAddList);
 
-			tempEmailList = Export.listErrandsByEmails(exportItem,searchPosEmailList,searchNegEmailList, 0);
-			
-			}
+			searchPosTerms = Export.getParsedData(exportItem.positivesearchterms);
+			searchNegTerms = Export.getParsedData(exportItem.negativesearchterms);
 				
-			Export.processExportData(exportItem,tempEmailList,exportFormatFields,1);
+			finalErrandsList = Export.listErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms ,1);
+			
+				
+			Export.processExportData(exportItem,finalErrandsList,exportFormatFields,1);
 						
 		}
 
