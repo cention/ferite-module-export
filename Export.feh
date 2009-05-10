@@ -31,13 +31,16 @@ function getSourceAreas (object exportAreas, number exportFlag){
 function listErrandsBySearch(object exportObj, array p_email_list, array n_email_list, array p_word_list, array n_word_list, number searchFlag){
 
 array errandsList,positive_list_email,negative_list_email,positive_list_body,negative_list_body ;
-array postive,negative;
-return p_email_list;
-	positive_list_email = Workflow.Errand.errandsForMatchingEmailAddress('(' + p_email_list.join('|') + ')');
-negative_list_email = Workflow.Errand.errandsForMatchingEmailAddress('(' + n_email_list.join('|') + ')');
+array positive,negative;
+array exportAreas = self.getSourceAreas(exportObj,0);
 
-	positive_list_body = Workflow.Errand.errandsForMatchingEmailBody('(' + p_word_list.join('|') + ')');
-	negative_list_body = Workflow.Errand.errandsForMatchingEmailBody('(' + n_word_list.join('|') + ')');
+	positive_list_email = Workflow.Errand.errandsForMatchingEmailAddress(exportAreas,exportObj.start,exportObj.finish,'(' + p_email_list.join('|') + ')');
+	
+	negative_list_email = Workflow.Errand.errandsForMatchingEmailAddress(exportAreas,exportObj.start,exportObj.finish,'(' + n_email_list.join('|') + ')');
+
+	positive_list_body = Workflow.Errand.errandsForMatchingEmailBody(exportAreas,exportObj.start,exportObj.finish,'(' + p_word_list.join('|') + ')');
+	
+	negative_list_body = Workflow.Errand.errandsForMatchingEmailBody(exportAreas,exportObj.start,exportObj.finish,'(' + n_word_list.join('|') + ')');
 
 
 // Join the lists
@@ -49,12 +52,12 @@ negative_list_email = Workflow.Errand.errandsForMatchingEmailAddress('(' + n_ema
 
 	if(searchFlag == 0){
 	
-	errandsList = Workflow.Errand.listErrandsForExportPreview(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])
+	errandsList = Workflow.Errand.listErrandsForExportPreview(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])
 	);
 
 }
 
-	else errandsList = 	   Workflow.Errand.listErrandsForExportScript(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])
+	else errandsList = 	   Workflow.Errand.listErrandsForExportScript(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])
 );
 
 	return errandsList;
