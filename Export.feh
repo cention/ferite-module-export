@@ -30,7 +30,7 @@ function getSourceAreas (object exportAreas, number exportFlag){
 
 function listErrandsBySearch(object exportObj, array p_email_list, array n_email_list, array p_word_list, array n_word_list, number searchFlag){
 
-array errandsList,positive_list_email,negative_list_email,positive_list_body,negative_list_body ;
+array errandsList=[],positive_list_email,negative_list_email,positive_list_body,negative_list_body ;
 array positive,negative;
 array exportAreas = self.getSourceAreas(exportObj,0);
 
@@ -56,13 +56,21 @@ array exportAreas = self.getSourceAreas(exportObj,0);
 
 	if(searchFlag == 0){
 	
-	errandsList = Workflow.Errand.listErrandsForExportPreview(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])
-	);
+// 	errandsList = Workflow.Errand.listErrandsForExportPreview(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])
+// 	); 
+		Workflow.Errand.listErrandsForExportPreview(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])).each() using( list ){
+		errandsList[]=list.id;
+		};
 
-}
+	}
 
-	else errandsList = 	   Workflow.Errand.listErrandsForExportScript(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])
-);
+// 	else errandsList = 	   Workflow.Errand.listErrandsForExportScript(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])
+// );
+	else {
+		Workflow.Errand.listErrandsForExportScript(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])).each() using( list ){
+		errandsList[] = list.id;
+		};
+	}
 
 	return errandsList;
 
@@ -161,11 +169,11 @@ function processExportData(object exportObj, array errandsList,array formatField
 		if(Array.keyExists(formatFields, "toAddress") ){
 			array receiverList;
 			errandObj.mail.to.each() using (value){
-				 //receiverList[ ] = value.emailAddress;
+				 receiverList[ ] = value.emailAddress;
 				//Array.push(receiverList,value.emailAddress);
 				temp[ "toAddress" ] = value.emailAddress;
 			};
-			//temp[ "toAddress" ] = receiverList;
+			temp[ "toAddress" ] = receiverList.join(',');
 		}
 			
 		if(Array.keyExists(formatFields, "subject") ){
@@ -226,11 +234,11 @@ function processExportData(object exportObj, array errandsList,array formatField
 		if(Array.keyExists(formatFields, "tags") ){
 			array taglist;
 			errandObj.tags.each() using (value){
-				//taglist[] = value.display;
+				taglist[] = value.display;
 				//Array.push(taglist, value.display);
 				temp["tags"] = value.display;
 			};
-			//temp[ "tags" ] = taglist;
+			temp[ "tags" ] = taglist.join(',');
 		}
 
 		if(Array.keyExists(formatFields, "clientid") ){
