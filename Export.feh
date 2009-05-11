@@ -1,5 +1,7 @@
 namespace Export {
 
+/* function getSourceAreas() gets the source errand areas IDs for export */
+
 function getSourceAreas (object exportAreas, number exportFlag){
 		array idAreas = [];
 
@@ -17,6 +19,7 @@ function getSourceAreas (object exportAreas, number exportFlag){
 		return idAreas;
 }
 
+/* function getParsedData() parse the comma separated list of search terms and emailaddress for export */
 
  function getParsedData(string list){
 
@@ -28,23 +31,79 @@ function getSourceAreas (object exportAreas, number exportFlag){
 	}
 
 
+/* function listErrandsByAllErrandsFlag() is invoked when allerrandsflag is set to true. searchflag 1 means it is invoked from backend script and 0 means invoked from app */
+
+function listErrandsByAllErrandsFlag(object exportObj, number exportFlag) {
+	
+	array errandsList= [];
+	
+	number startDate = 0, endDate = 0;
+
+	if(exportObj.start == 0 || exportObj.finish == 0) {
+			if(exportFlag)
+				Console.println("Time interval is not specified for this export.");
+			else	return [];
+	}
+	
+	startDate = (exportObj.start <0 ? (Date.now() + exportObj.start):exportObj.start);
+	endDate = (exportObj.finish <0 ? (Date.now() + exportObj.start):exportObj.finish);
+	
+		if(exportFlag == 0){
+			Workflow.Errand.listLimitedErrandsWithinIntervalForExport(self.getSourceAreas(exportObj,0),startDate,endDate).each() using (errandItem)	{
+				errandsList[] = errandItem.id;
+		
+			};
+
+		}
+		else if (exportFlag == 1){
+
+			Workflow.Errand.listErrandsWithinIntervalForExport(self.getSourceAreas(exportObj,1),startDate,endDate).each() using (errandItem)	{
+				errandsList[] = errandItem.id;
+		
+			};
+
+		}
+		if(not errandsList) {
+			if(exportFlag)
+				Console.println("No errands found in the time interval for this export.");
+			else return [];
+			
+		}
+	
+
+	return errandsList;
+
+}
+
+/* function listErrandsBySearch() is invoked when allerrandsflag is false, that is search criteria is chosen. searchflag 1 means it is invoked from backend script and 0 means invoked from app */
+
 function listErrandsBySearch(object exportObj, array p_email_list, array n_email_list, array p_word_list, array n_word_list, number searchFlag){
 
-array errandsList=[],positive_list_email,negative_list_email,positive_list_body,negative_list_body ;
-array positive,negative;
-array exportAreas = self.getSourceAreas(exportObj,0);
+	array errandsList=[],positive_list_email = [],negative_list_email = [],positive_list_body = [],negative_list_body = [] ;
+	array positive = [],negative = [];
+	array exportAreas = self.getSourceAreas(exportObj,0);
+	number startDate = 0, endDate = 0;
+	
+	if(exportObj.start == 0 || exportObj.finish == 0) {
+			if(searchFlag)
+				Console.println("Time interval is not specified for this export.");
+				return [];
+	}
+		
+	startDate = (exportObj.start <0 ? (Date.now() + exportObj.start):exportObj.start);
+	endDate = (exportObj.finish <0 ? (Date.now() + exportObj.start):exportObj.finish);
 
 	if( p_email_list.size() )
-		positive_list_email = Workflow.Errand.errandsForMatchingEmailAddress(exportAreas,exportObj.start,exportObj.finish,'(' + p_email_list.join('|') + ')');
+		positive_list_email = Workflow.Errand.errandsForMatchingEmailAddress(exportAreas,startDate,endDate,'(' + p_email_list.join('|') + ')');
 	
 	if( n_email_list.size() )
-		negative_list_email = Workflow.Errand.errandsForMatchingEmailAddress(exportAreas,exportObj.start,exportObj.finish,'(' + n_email_list.join('|') + ')');
+		negative_list_email = Workflow.Errand.errandsForMatchingEmailAddress(exportAreas,startDate,endDate,'(' + n_email_list.join('|') + ')');
 	
 	if( p_word_list.size() )
-		positive_list_body = Workflow.Errand.errandsForMatchingEmailBody(exportAreas,exportObj.start,exportObj.finish,'(' + p_word_list.join('|') + ')');
+		positive_list_body = Workflow.Errand.errandsForMatchingEmailBody(exportAreas,startDate,endDate,'(' + p_word_list.join('|') + ')');
 	
 	if( n_word_list.size() ) 
-		negative_list_body = Workflow.Errand.errandsForMatchingEmailBody(exportAreas,exportObj.start,exportObj.finish,'(' + n_word_list.join('|') + ')');
+		negative_list_body = Workflow.Errand.errandsForMatchingEmailBody(exportAreas,startDate,endDate,'(' + n_word_list.join('|') + ')');
 	
 
 // Join the lists
@@ -56,19 +115,19 @@ array exportAreas = self.getSourceAreas(exportObj,0);
 
 	if(searchFlag == 0){
 	
-// 	errandsList = Workflow.Errand.listErrandsForExportPreview(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])
-// 	); 
+
 		Workflow.Errand.listErrandsForExportPreview(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])).each() using( list ){
-		errandsList[]=list.id;
+
+			errandsList[] = list.id;
 		};
 
 	}
 
-// 	else errandsList = 	   Workflow.Errand.listErrandsForExportScript(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])
-// );
+
 	else {
 		Workflow.Errand.listErrandsForExportScript(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])).each() using( list ){
-		errandsList[] = list.id;
+
+			errandsList[] = list.id;
 		};
 	}
 
@@ -77,61 +136,16 @@ array exportAreas = self.getSourceAreas(exportObj,0);
 }
 
 
-
+/* function listExportFormats() get all the selected formats the export will use */
 
  function listExportFormats(number idformat){
 
 	array formatFields = Workflow.Format.listFieldsByFormat(idformat);
 
-		if( Array.keyExists(formatFields, "defaultformat") )
-    			Array.del( formatFields, "defaultformat" );
-		if( Array.keyExists(formatFields, "_version") )
-    			Array.del( formatFields, "_version" );
-		if( Array.keyExists(formatFields, "id") )
-    			Array.del( formatFields, "id" );
-		if( Array.keyExists(formatFields, "name") )
-    			Array.del( formatFields, "name" );
-
 		return formatFields;
 }
 
-function listErrandsByAllErrandsFlag(object exportObj, number exportFlag) {
-	
-	array errandsList= [];
-
-	if(exportObj.start == 0 || exportObj.finish == 0) {
-			if(exportFlag)
-				Console.println("Time interval is not specified for this export.");
-				return [];
-	}
-	
-	else {	
-		if(exportFlag == 0){
-			Workflow.Errand.listLimitedErrandsWithinIntervalForExport(self.getSourceAreas(exportObj,0),exportObj.start,exportObj.finish).each() using (errandItem)	{
-				errandsList[] = errandItem.id;
-		
-			};
-
-		}
-		else if (exportFlag == 1){
-
-			Workflow.Errand.listErrandsWithinIntervalForExport(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish).each() using (errandItem)	{
-				errandsList[] = errandItem.id;
-		
-			};
-
-		}
-		if(not errandsList) {
-			if(exportFlag)
-				Console.println("No errands found in the time interval for this export.");
-			return [];
-			
-		}
-	}
-
-	return errandsList;
-
-}
+/* function processExportData() does the actual processing of export data. From this function generateExportInfo() in Workflow.fe is called to save current progress of export */
 
 function processExportData(object exportObj, array errandsList,array formatFields, number exportFlag){
 		object exportInfo;
@@ -143,6 +157,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 		array exportErrands = [];
 		array temp = [];
 		object errandObj;
+
 		if(exportFlag){  //the export is for backend script.
 			_exportStart = Date.now();
 			totalErrands = errandsList.size();
@@ -170,8 +185,6 @@ function processExportData(object exportObj, array errandsList,array formatField
 			array receiverList;
 			errandObj.mail.to.each() using (value){
 				 receiverList[ ] = value.emailAddress;
-				//Array.push(receiverList,value.emailAddress);
-				temp[ "toAddress" ] = value.emailAddress;
 			};
 			temp[ "toAddress" ] = receiverList.join(',');
 		}
@@ -232,13 +245,11 @@ function processExportData(object exportObj, array errandsList,array formatField
 		}
 			
 		if(Array.keyExists(formatFields, "tags") ){
-			array taglist;
+			array tagList;
 			errandObj.tags.each() using (value){
-				taglist[] = value.display;
-				//Array.push(taglist, value.display);
-				temp["tags"] = value.display;
+				tagList[] = value.display;
 			};
-			temp[ "tags" ] = taglist.join(',');
+			temp[ "tags" ] = tagList.join(',');
 		}
 
 		if(Array.keyExists(formatFields, "clientid") ){
@@ -293,43 +304,17 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 
 		exportInfo.save();
 		
-	}
+		/* the export is finished and progress is 100 %, so  the export scheduled flag is set to false  */
 
-   function mergeList( array a, array b ){
-
-		Array.each( b )using( bValue ){
-
-			Array.each( a ) using ( aValue ){
-
-				if( bValue == aValue )
-					return a;
-			};
-
-			Array.push( a, bValue );		
-		};
-
-		return a;	
-
-	}
-
-	function removeDuplicate ( array A ) {
-
-		number lv;	
-		array rA; //returned Array
-		A = Array.sort ( A );
-
-		for ( lv = 0 ; lv < Array.size(A) - 1; lv ++ ) {
-			if ( A[lv] != A[lv+1] )
-				rA[] = A[lv];
-		}
-	
-		rA[] = A[lv];	
+		exportObj.setValue('shouldgenerateflag', false);
+		exportObj.save();
 		
-		return rA;
-	
+		if(exportObj.emailflag == true)
+			self.sendExportToOwner(exportObj, fileName);
+		
 	}
 
-
+   
 	function createExportMessage( object mail ) {
 
 		object message = new Mail.Message();
@@ -478,16 +463,11 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
  			mail.setValue( 'attachments', attachments );
  			mail.save();
  		
-			// the export is finished and set the export scheduled flag is set to false
-			export.setValue('shouldgenerateflag', false);
-			export.save();
 
  			Console.println("Finished.");
  			Console.println("Sending E-mail to export owner...");
  
- 		
- 		
-			MailUtilities.sendMessage(connection,self.createExportMessage(mail) );
+ 			MailUtilities.sendMessage(connection,self.createExportMessage(mail) );
 		
  			Console.println("Sending internal message to the user...");
 
@@ -549,10 +529,6 @@ Created by : Kreshano Dutta
 		fileName = export.name + currentTimeStamp + ".csv";
 
 		self.saveExports(fileName, resultCSV );
-		
-		if(export.emailflag == true)
-			self.sendExportToOwner(export, fileName);
-		
 		return fileName;
 	}
 
@@ -612,9 +588,6 @@ Created by : Kreshano Dutta
 		fileName = export.name + currentTimeStamp + ".xls";
 		
 		self.saveExports(fileName, resultXLS );
-		if(export.emailflag == true)
-			self.sendExportToOwner(export, fileName);
-		
 		return fileName;
 	}
 
@@ -661,17 +634,7 @@ Created by : Kreshano Dutta
 		fileName = export.name + currentTimeStamp + ".xml";
 		
 		self.saveExports(fileName, resultXML );
-
-		if(export.emailflag == true)
-			self.sendExportToOwner(export, fileName);
-		
 		return fileName;
 	}
 	
-
-	
-	
-	
-
-
 }
