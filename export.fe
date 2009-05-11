@@ -18,55 +18,74 @@ uses 'MailUtilities.feh';
 		array exports;
 		
 		exports = Workflow.Export.listExportRuns();
+
+		Console.println ( "Total available scripts to run is ${exports.size()}" );
 		
 		
 		if(not exports){
 			Console.println("No scheduled exports found.");
 			return ;
 		}
-		//else Console.println("" + exports.size() + " export(s) scheduled to run.");
 
 		/* all exports needing to be run */
 
 		exports.each() using (exportItem) {
-		array errandsList;
-		array exportFormatFields;
-		
-		Console.println("Export:" + exportItem.name + " is processing...");
-		
-		
-		
-		exportFormatFields = Export.listExportFormats(exportItem.exportFormat.id);
-
-		
 			
-		if(exportItem.allerrandsflag){
-			errandsList = Export.listErrandsByAllErrandsFlag(exportItem,1);
-			Export.processExportData(exportItem,errandsList,exportFormatFields,1);
-		}
-
-		else { 	
-			array searchPosEmailList = [],searchNegEmailList = [];
-			array searchPosTerms = [], searchNegTerms = [];
-			array finalErrandsList;
-
-
-			searchPosEmailList = Export.getParsedData(exportItem.positiveEmailAddList);
-			searchNegEmailList = Export.getParsedData(exportItem.negativeEmailAddList);
-
-			searchPosTerms = Export.getParsedData(exportItem.positivesearchterms);
-			searchNegTerms = Export.getParsedData(exportItem.negativesearchterms);
-				
-			finalErrandsList = Export.listErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms ,1);
+			processExport(exportItem);
 			
+		};
+	
+	}
+
+	/*
+
+		this function will process an individual export. 
+		parameter ob is an export object.
+
+	*/
+	function processExport ( object exportItem ) {
+
+			array errandsList;
+			array exportFormatFields;
+
+			monitor{
+			
+				Console.println("Export:" + exportItem.name + " is processing...");	
 				
-			Export.processExportData(exportItem,finalErrandsList,exportFormatFields,1);
+				exportFormatFields = Export.listExportFormats(exportItem.exportFormat.id);			
+					
+				if(exportItem.allerrandsflag){
+					errandsList = Export.listErrandsByAllErrandsFlag(exportItem,1);
+					Export.processExportData(exportItem,errandsList,exportFormatFields,1);
+				
+				}	
+				else { 	
+					array searchPosEmailList = [],searchNegEmailList = [];
+					array searchPosTerms = [], searchNegTerms = [];
+					array finalErrandsList;	
+		
+					searchPosEmailList = Export.getParsedData(exportItem.positiveEmailAddList);
+					searchNegEmailList = Export.getParsedData(exportItem.negativeEmailAddList);
+		
+					searchPosTerms = Export.getParsedData(exportItem.positivesearchterms);
+					searchNegTerms = Export.getParsedData(exportItem.negativesearchterms);
 						
-		}
+					finalErrandsList = Export.listErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms ,1);					
+					Export.processExportData(exportItem,finalErrandsList,exportFormatFields,1);
+					
+				}
 
-	};
+				return 1; //positive value means export is processed successfully	
+			}
+			handle{
+				
+				Console.println("Export ${exportItem.name} caused a Error to Stop this script");
+				return -1; //negative value means export is unsuccessful.
+			}
 
-}
+
+	}
+
 
 
 
