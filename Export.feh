@@ -34,14 +34,18 @@ array errandsList,positive_list_email,negative_list_email,positive_list_body,neg
 array positive,negative;
 array exportAreas = self.getSourceAreas(exportObj,0);
 
-	positive_list_email = Workflow.Errand.errandsForMatchingEmailAddress(exportAreas,exportObj.start,exportObj.finish,'(' + p_email_list.join('|') + ')');
+	if( p_email_list.size() )
+		positive_list_email = Workflow.Errand.errandsForMatchingEmailAddress(exportAreas,exportObj.start,exportObj.finish,'(' + p_email_list.join('|') + ')');
 	
-	negative_list_email = Workflow.Errand.errandsForMatchingEmailAddress(exportAreas,exportObj.start,exportObj.finish,'(' + n_email_list.join('|') + ')');
-
-	positive_list_body = Workflow.Errand.errandsForMatchingEmailBody(exportAreas,exportObj.start,exportObj.finish,'(' + p_word_list.join('|') + ')');
+	if( n_email_list.size() )
+		negative_list_email = Workflow.Errand.errandsForMatchingEmailAddress(exportAreas,exportObj.start,exportObj.finish,'(' + n_email_list.join('|') + ')');
 	
-	negative_list_body = Workflow.Errand.errandsForMatchingEmailBody(exportAreas,exportObj.start,exportObj.finish,'(' + n_word_list.join('|') + ')');
-
+	if( p_word_list.size() )
+		positive_list_body = Workflow.Errand.errandsForMatchingEmailBody(exportAreas,exportObj.start,exportObj.finish,'(' + p_word_list.join('|') + ')');
+	
+	if( n_word_list.size() ) 
+		negative_list_body = Workflow.Errand.errandsForMatchingEmailBody(exportAreas,exportObj.start,exportObj.finish,'(' + n_word_list.join('|') + ')');
+	
 
 // Join the lists
 	positive = positive_list_email.append(positive_list_body);
