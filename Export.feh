@@ -45,8 +45,8 @@ function listErrandsByAllErrandsFlag(object exportObj, number exportFlag) {
 			else	return [];
 	}
 	
-	startDate = (exportObj.start <0 ? (Date.now() + exportObj.start):exportObj.start);
-	endDate = (exportObj.finish <0 ? (Date.now() + exportObj.start):exportObj.finish);
+	startDate = (exportObj.start <0 ? (Date.GMTnow() + exportObj.start):exportObj.start);
+	endDate = (exportObj.finish <0 ? (Date.GMTnow() + exportObj.finish):exportObj.finish);
 	
 		if(exportFlag == 0){
 			Workflow.Errand.listLimitedErrandsWithinIntervalForExport(self.getSourceAreas(exportObj,0),startDate,endDate).each() using (errandItem)	{
@@ -90,8 +90,8 @@ function listErrandsBySearch(object exportObj, array p_email_list, array n_email
 				return [];
 	}
 		
-	startDate = (exportObj.start <0 ? (Date.now() + exportObj.start):exportObj.start);
-	endDate = (exportObj.finish <0 ? (Date.now() + exportObj.start):exportObj.finish);
+	startDate = (exportObj.start <0 ? (Date.GMTnow() + exportObj.start):exportObj.start);
+	endDate = (exportObj.finish <0 ? (Date.GMTnow() + exportObj.finish):exportObj.finish);
 
 	if( p_email_list.size() )
 		positive_list_email = Workflow.Errand.errandsForMatchingEmailAddress(exportAreas,startDate,endDate,'(' + p_email_list.join('|') + ')');

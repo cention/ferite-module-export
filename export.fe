@@ -19,7 +19,7 @@ uses 'MailUtilities.feh';
 		
 		exports = Workflow.Export.listExportRuns();
 
-		Console.println ( "Total available scripts to run is ${exports.size()}" );
+		
 		
 		
 		if(not exports){
@@ -27,6 +27,7 @@ uses 'MailUtilities.feh';
 			return ;
 		}
 
+		else Console.println ( "Total available exports to run is ${exports.size()}" );
 		/* all exports needing to be run */
 
 		exports.each() using (exportItem) {
@@ -79,7 +80,7 @@ uses 'MailUtilities.feh';
 			}
 			handle{
 				
-				Console.println("Export ${exportItem.name} caused a Error to Stop this script");
+				Console.println("Export ${exportItem.name} caused an error.");
 				return -1; //negative value means export is unsuccessful.
 			}
 
