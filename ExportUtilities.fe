@@ -1,0 +1,80 @@
+uses "console","array";
+
+
+
+/*
+	This function convert an array to a string. The Array field is separated by the delim parameter.
+	output = arrayToString(["hi","how","are","you"],":");
+	output will be --> hi:how:are:you
+*/
+namespace ExportUtilities{
+	function arrayToString( array A, string delim) {
+	
+		string output="";
+	
+		A.eachWithIndex() using ( arr , idx ) {
+				
+					if ( idx > 0 ) output = output + delim + arr;
+					else output = output + arr;
+		};
+		return output;
+	}
+	
+	function process2DArrayToString( array A ) {
+	
+		array output = [];
+		A.each() using ( arr ) {
+		
+			if ( arr isa array ) {
+				if ( arr and (self.arrayToString(arr,":").length() > 0) ) output[] = self.arrayToString(arr,":");
+			}
+			else if ( arr isa string ) {
+	
+				output [] = arr;
+			}
+		};
+	
+		return output;
+	
+	}
+	
+	function removeDuplicate ( array A ) {
+	
+			number lv;	
+			array rA; //return Array
+
+			if ( A.size() == 0 ) return A;
+			
+			A = Array.sort ( A );
+			
+	
+			for ( lv = 0 ; lv < Array.size(A) - 1; lv ++ ) {
+				if ( A[lv].trim(" ") != A[lv+1].trim(" ") )
+					rA[] = A[lv];
+			}
+		
+			rA[] = A[lv];	
+			
+			return rA;	
+	}
+	
+	function  dissect1D22DArray ( array A, string delim ) {
+		
+		array output = [];
+	
+		A.each() using ( arr ) {
+			
+			output [] = String.dissect(arr,":",0);
+		};	
+	
+		return output;
+	}
+	
+	function makeUniqueRow( array A ) {
+		array tmp1 = self.process2DArrayToString(A);
+		array tmp2 = self.removeDuplicate( tmp1)  ;
+	
+		return self.dissect1D22DArray(tmp2,":");
+	}
+	
+}
