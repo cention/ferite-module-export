@@ -76,6 +76,47 @@ function listErrandsByAllErrandsFlag(object exportObj, number limit, number offs
 
 }
 
+
+function countErrandsBySearch(object exportObj, array p_email_list, array n_email_list, array p_word_list, array n_word_list,number limit,number offset){
+
+	array errandsList=[],positive_list_email = [],negative_list_email = [],positive_list_body = [],negative_list_body = [] ;
+	array positive = [],negative = [];
+	array exportAreas = self.getSourceAreas(exportObj,0);
+	number startDate = 0, endDate = 0;
+	
+	if(exportObj.start == 0 || exportObj.finish == 0) {
+			if(searchFlag)
+				Console.println("Time interval is not specified for this export.");
+				return [];
+	}
+		
+	startDate = (exportObj.start <0 ? (Date.GMTnow() + exportObj.start):exportObj.start);
+	endDate = (exportObj.finish <0 ? (Date.GMTnow() + exportObj.finish):exportObj.finish);
+
+	if( p_email_list.size() )
+		positive_list_email = Workflow.Errand.errandsForMatchingEmailAddress(exportAreas,startDate,endDate,'(' + p_email_list.join('|') + ')');
+	
+	if( n_email_list.size() )
+		negative_list_email = Workflow.Errand.errandsForMatchingEmailAddress(exportAreas,startDate,endDate,'(' + n_email_list.join('|') + ')');
+	
+	if( p_word_list.size() )
+		positive_list_body = Workflow.Errand.errandsForMatchingEmailBody(exportAreas,startDate,endDate,'(' + p_word_list.join('|') + ')');
+	
+	if( n_word_list.size() ) 
+		negative_list_body = Workflow.Errand.errandsForMatchingEmailBody(exportAreas,startDate,endDate,'(' + n_word_list.join('|') + ')');
+	
+
+// Join the lists
+	positive = positive_list_email.append(positive_list_body);
+	negative = negative_list_email.append(negative_list_body);
+
+	return Workflow.Errand.countErrandsForExportScript(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0]));
+	
+
+}
+
+
+
 /* function listErrandsBySearch() is invoked when allerrandsflag is false, that is search criteria is chosen. searchflag 1 means it is invoked from backend script and 0 means invoked from app */
 
 function listErrandsBySearch(object exportObj, array p_email_list, array n_email_list, array p_word_list, array n_word_list,number limit,number offset, number searchFlag){
@@ -126,7 +167,7 @@ function listErrandsBySearch(object exportObj, array p_email_list, array n_email
 
 
 	else {
-		Workflow.Errand.listErrandsForExportScript(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])).each() using( list ){
+		Workflow.Errand.listErrandsForExportScriptWithLimit(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0]),limit,offset).each() using( list ){
 
 			errandsList[] = list.id;
 		};
@@ -142,8 +183,8 @@ function listErrandsBySearch(object exportObj, array p_email_list, array n_email
  function listExportFormats(number idformat){
 
 	array formatFields = Workflow.Format.listFieldsByFormat(idformat);
-
-		return formatFields;
+	Console.println(formatFields);
+	return formatFields;
 }
 
 /* function processExportData() does the actual processing of export data. From this function generateExportInfo() in Workflow.fe is called to save current progress of export */
@@ -166,7 +207,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 		}
 
 		
-
+		//Console.println("processed Errands are : "+errandsList);
 		errandsList.each() using (errandItem)	{
 		
 			errandObj = Workflow.Errand.load(errandItem);
@@ -267,14 +308,14 @@ function processExportData(object exportObj, array errandsList,array formatField
 			exportErrands[] = temp;
 			temp[] = "";
 	
-			if(exportFlag){
+			if(exportFlag and totalErrands){
 				progress = (errandsProcessed * 100) / totalErrands;
 				exportInfo.setValue('progress',progress);
 				exportInfo.save();
 			}
 	};
 
-	
+	//Console.println("Progress is: "+progress);
 
 	if((exportFlag) and (progress == 100)){
 		

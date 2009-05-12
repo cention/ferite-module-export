@@ -48,7 +48,7 @@ uses 'MailUtilities.feh';
 
 			array errandsList;
 			array exportFormatFields;
-			number totalErrandForExport;
+			number totalErrandForExport,totalErrandForSearch;
 			number should_processed = (webframework.Config.byName('Export.ErrandProcessed')[0].value).toNumber();
 			number noLoop,offset = 0;
 			number exportScriptFlag = 1;
@@ -57,10 +57,12 @@ uses 'MailUtilities.feh';
 			
 				Console.println("Export:" + exportItem.name + " is processing...");	
 				
-				exportFormatFields = Export.listExportFormats(exportItem.exportFormat.id);			
+				if(exportItem.exportFormat){
+					exportFormatFields = Export.listExportFormats(exportItem.exportFormat.id);	
+				}		
 					
 				if(exportItem.allerrandsflag){
-
+					//Console.println("all errand flag is true...");
 					totalErrandForExport = Workflow.Errand.countErrandsWithinIntervalForExport(Export.getSourceAreas(exportItem,exportScriptFlag),exportItem.start,exportItem.finish);
 					
 					noLoop = ((totalErrandForExport * 1.00)/ should_processed).ceil();	
@@ -72,35 +74,52 @@ uses 'MailUtilities.feh';
 						offset = i * should_processed ;
 						errandsList = Export.listErrandsByAllErrandsFlag(exportItem,should_processed,offset,exportScriptFlag);
 						
+						
 						Export.processExportData(exportItem,errandsList,exportFormatFields,totalErrandForExport,offset,exportScriptFlag);
 						
 					}
 	
 					
-				}	
+ 				}	
 				else { 	
+
 					array searchPosEmailList = [],searchNegEmailList = [];
 					array searchPosTerms = [], searchNegTerms = [];
-					array finalErrandsList;	
-		
+					array finalErrandsList;
+					
+					//Console.println("search flag is on");
 					searchPosEmailList = Export.getParsedData(exportItem.positiveEmailAddList);
 					searchNegEmailList = Export.getParsedData(exportItem.negativeEmailAddList);
 		
 					searchPosTerms = Export.getParsedData(exportItem.positivesearchterms);
 					searchNegTerms = Export.getParsedData(exportItem.negativesearchterms);
+
+					totalErrandForSearch = Export.countErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms,should_processed,offset);
+
+					noLoop = ((totalErrandForSearch * 1.00)/ should_processed).ceil();
+					
+					//Console.println("No of errand is: "+totalErrandForSearch);
+
+				
+	
+					for(number i=0;i<noLoop;i++){
+						offset = i * should_processed ;
+						//Console.println(""+finalErrandsList);
 						
-					finalErrandsList = Export.listErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms ,finalErrandsList.size(),0,exportScriptFlag);					
-					Export.processExportData(exportItem,finalErrandsList,exportFormatFields,finalErrandsList.size(),0,exportScriptFlag);
+						finalErrandsList =  Export.listErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms,should_processed,offset,1);					
+						Export.processExportData(exportItem,finalErrandsList,exportFormatFields,totalErrandForSearch,offset,1);
+					}
+
 					
 				}
 
 				return 1; //positive value means export is processed successfully	
-			}
-			handle{
-				
-				Console.println(err.str);
-				return -1; //negative value means export is unsuccessful.
-			}
+ 			}
+ 			handle{
+ 				
+ 				Console.println(err.str);
+ 				return -1; //negative value means export is unsuccessful.
+ 			}
 
 
 	}
