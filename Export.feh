@@ -367,17 +367,18 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 
 	function sendInternalMsg(object exportObj){
 
+		object objSender = new Workflow.User();
 		object simpleMessage = new Workflow.SimpleMessage();
 		object inboxMessage = new Workflow.InternalMessage();
 		object sentMessage = new Workflow.InternalMessage();
 		object  exportOwnerUserObj;
 		number timestampSent = Date.GMTnow();		
-		object objSender= Workflow.User.currentWorkflowUser;
-		
-		
-		
+				
 		exportOwnerUserObj = Workflow.User.load(exportObj.createdby.id);
 		
+		objSender.setValue( 'username',"sysadmin");
+		objSender.save();
+
 		simpleMessage.setValue( 'subject', "Cention Exports" );
 		simpleMessage.setValue( 'body', "Export is finished." );
 		simpleMessage.save();
