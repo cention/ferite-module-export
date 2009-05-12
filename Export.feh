@@ -509,8 +509,8 @@ Created by : Kreshano Dutta
 		number count = 0;
 
 		
-		dataForFile = ExportUtilities.makeUniqueRow(dataForFile);
-		Console.println ( dataForFile );
+		//dataForFile = ExportUtilities.makeUniqueRow(dataForFile);
+		//Console.println ( dataForFile );
 		
 
 		dataForFile and dataForFile[0].each() using( temp )
@@ -554,8 +554,8 @@ Created by : Kreshano Dutta
 		number count = 0;
 
 
-		Console.println(dataForFile );
-		dataForFile = ExportUtilities.makeUniqueRow(dataForFile);
+		//Console.println(dataForFile );
+		//dataForFile = ExportUtilities.makeUniqueRow(dataForFile);
 
 		resultXLS =  "<html>\n";
 		resultXLS += "<head>\n";
@@ -616,8 +616,8 @@ Created by : Kreshano Dutta
  		string currentTimeStamp = "" + Date.GMTnow();	
 		number count = 0;
 
-		Console.println(dataForFile );
-		dataForFile = ExportUtilities.makeUniqueRow(dataForFile);
+		//Console.println(dataForFile );
+		//dataForFile = ExportUtilities.makeUniqueRow(dataForFile);
 		
 		dataForFile and dataForFile[0].each() using( temp )
 		{
