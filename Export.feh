@@ -1,3 +1,4 @@
+uses "ExportUtilities.fe";
 namespace Export {
 
 /* function getSourceAreas() gets the source errand areas IDs for export */
@@ -508,6 +509,10 @@ Created by : Kreshano Dutta
 		number count = 0;
 
 		
+		dataForFile = ExportUtilities.makeUniqueRow(dataForFile);
+		Console.println ( dataForFile );
+		
+
 		dataForFile and dataForFile[0].each() using( temp )
 		{
 			collumnHeader[] = Array.getName(dataForFile[0],count);
@@ -547,6 +552,10 @@ Created by : Kreshano Dutta
 		array collumnHeader;
 		string currentTimeStamp = "" + Date.GMTnow();
 		number count = 0;
+
+
+		Console.println(dataForFile );
+		dataForFile = ExportUtilities.makeUniqueRow(dataForFile);
 
 		resultXLS =  "<html>\n";
 		resultXLS += "<head>\n";
@@ -607,6 +616,8 @@ Created by : Kreshano Dutta
  		string currentTimeStamp = "" + Date.GMTnow();	
 		number count = 0;
 
+		Console.println(dataForFile );
+		dataForFile = ExportUtilities.makeUniqueRow(dataForFile);
 		
 		dataForFile and dataForFile[0].each() using( temp )
 		{
