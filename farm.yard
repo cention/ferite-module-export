@@ -2,6 +2,7 @@
 <yard name="export">
 
 	<phase id="install">
+		<copy file="ExportUtilities.fe" target="$(FeriteModuleSourceDir)" />
 		<copy file="Export.feh" target="$(FeriteModuleSourceDir)" />
 		<copy file="export.fe" target="$(FeriteModuleSourceDir)" />
 		<copy file="cention_export.xml" target="$(FeriteModuleDescriptionDir)" />
