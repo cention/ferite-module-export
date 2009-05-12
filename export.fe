@@ -72,7 +72,7 @@ uses 'MailUtilities.feh';
 						offset = i * should_processed ;
 						errandsList = Export.listErrandsByAllErrandsFlag(exportItem,should_processed,offset,exportScriptFlag);
 						
-						Export.processExportData(exportItem,errandsList,exportFormatFields,offset,totalErrandForExport,exportScriptFlag);
+						Export.processExportData(exportItem,errandsList,exportFormatFields,totalErrandForExport,offset,exportScriptFlag);
 						
 					}
 	
@@ -89,8 +89,8 @@ uses 'MailUtilities.feh';
 					searchPosTerms = Export.getParsedData(exportItem.positivesearchterms);
 					searchNegTerms = Export.getParsedData(exportItem.negativesearchterms);
 						
-					finalErrandsList = Export.listErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms ,exportScriptFlag);					
-					Export.processExportData(exportItem,finalErrandsList,exportFormatFields,exportScriptFlag);
+					finalErrandsList = Export.listErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms ,finalErrandsList.size(),0,exportScriptFlag);					
+					Export.processExportData(exportItem,finalErrandsList,exportFormatFields,finalErrandsList.size(),0,exportScriptFlag);
 					
 				}
 

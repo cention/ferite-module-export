@@ -78,7 +78,7 @@ function listErrandsByAllErrandsFlag(object exportObj, number limit, number offs
 
 /* function listErrandsBySearch() is invoked when allerrandsflag is false, that is search criteria is chosen. searchflag 1 means it is invoked from backend script and 0 means invoked from app */
 
-function listErrandsBySearch(object exportObj, array p_email_list, array n_email_list, array p_word_list, array n_word_list, number searchFlag){
+function listErrandsBySearch(object exportObj, array p_email_list, array n_email_list, array p_word_list, array n_word_list,number limit,number offset, number searchFlag){
 
 	array errandsList=[],positive_list_email = [],negative_list_email = [],positive_list_body = [],negative_list_body = [] ;
 	array positive = [],negative = [];
@@ -148,7 +148,7 @@ function listErrandsBySearch(object exportObj, array p_email_list, array n_email
 
 /* function processExportData() does the actual processing of export data. From this function generateExportInfo() in Workflow.fe is called to save current progress of export */
 
-function processExportData(object exportObj, array errandsList,array formatFields,number _offset,number totalErrands, number exportFlag){
+function processExportData(object exportObj, array errandsList,array formatFields,number totalErrands, number _offset, number exportFlag){
 		object exportInfo;
 		number progress = 0;
 		number errandsProcessed = _offset;
