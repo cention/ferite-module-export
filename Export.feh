@@ -39,7 +39,7 @@ function listErrandsByAllErrandsFlag(object exportObj, number limit, number offs
 	array errandsList= [];
 	
 	number startDate = 0, endDate = 0;
-
+      
 	if(exportObj.start == 0 || exportObj.finish == 0) {
 			if(exportFlag)
 				Console.println("Time interval is not specified for this export.");
@@ -50,7 +50,7 @@ function listErrandsByAllErrandsFlag(object exportObj, number limit, number offs
 	endDate = (exportObj.finish <0 ? (Date.GMTnow() + exportObj.finish):exportObj.finish);
 	
 		if(exportFlag == 0){
-			Workflow.Errand.listLimitedErrandsWithinIntervalForExport(self.getSourceAreas(exportObj,0),startDate,endDate).each() using (errandItem)	{
+			Workflow.Errand.listLimitedErrandsWithinIntervalForExport(self.getSourceAreas(exportObj,exportFlag),startDate,endDate).each() using (errandItem)	{
 				errandsList[] = errandItem.id;
 		
 			};
@@ -58,7 +58,7 @@ function listErrandsByAllErrandsFlag(object exportObj, number limit, number offs
 		}
 		else if (exportFlag == 1){
 
-			Workflow.Errand.listErrandsWithinIntervalForExportWithLimit(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish,limit,offset).each() using (errandItem)	{
+			Workflow.Errand.listErrandsWithinIntervalForExportWithLimit(self.getSourceAreas(exportObj,exportFlag),startDate,endDate,limit,offset).each() using (errandItem)	{
 				errandsList[] = errandItem.id;
 		
 			};
@@ -76,12 +76,13 @@ function listErrandsByAllErrandsFlag(object exportObj, number limit, number offs
 
 }
 
+/* this function is invoked only for backend script purpose */
 
 function countErrandsBySearch(object exportObj, array p_email_list, array n_email_list, array p_word_list, array n_word_list,number limit,number offset){
 
 	array errandsList=[],positive_list_email = [],negative_list_email = [],positive_list_body = [],negative_list_body = [] ;
 	array positive = [],negative = [];
-	array exportAreas = self.getSourceAreas(exportObj,0);
+	array exportAreas = self.getSourceAreas(exportObj,1);
 	number startDate = 0, endDate = 0;
 	
 	if(exportObj.start == 0 || exportObj.finish == 0) {
@@ -110,7 +111,7 @@ function countErrandsBySearch(object exportObj, array p_email_list, array n_emai
 	positive = positive_list_email.append(positive_list_body);
 	negative = negative_list_email.append(negative_list_body);
 
-	return Workflow.Errand.countErrandsForExportScript(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0]));
+	return Workflow.Errand.countErrandsForExportScript(exportAreas,startDate,endDate,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0]));
 	
 
 }
@@ -123,7 +124,7 @@ function listErrandsBySearch(object exportObj, array p_email_list, array n_email
 
 	array errandsList=[],positive_list_email = [],negative_list_email = [],positive_list_body = [],negative_list_body = [] ;
 	array positive = [],negative = [];
-	array exportAreas = self.getSourceAreas(exportObj,0);
+	array exportAreas = self.getSourceAreas(exportObj,searchFlag);
 	number startDate = 0, endDate = 0;
 	
 	if(exportObj.start == 0 || exportObj.finish == 0) {
@@ -158,7 +159,7 @@ function listErrandsBySearch(object exportObj, array p_email_list, array n_email
 	if(searchFlag == 0){
 	
 
-		Workflow.Errand.listErrandsForExportPreview(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])).each() using( list ){
+		Workflow.Errand.listErrandsForExportPreview(exportAreas,startDate,endDate,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])).each() using( list ){
 
 			errandsList[] = list.id;
 		};
@@ -167,7 +168,7 @@ function listErrandsBySearch(object exportObj, array p_email_list, array n_email
 
 
 	else {
-		Workflow.Errand.listErrandsForExportScriptWithLimit(exportAreas,exportObj.start,exportObj.finish,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0]),limit,offset).each() using( list ){
+		Workflow.Errand.listErrandsForExportScriptWithLimit(exportAreas,startDate,endDate,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0]),limit,offset).each() using( list ){
 
 			errandsList[] = list.id;
 		};
@@ -183,7 +184,7 @@ function listErrandsBySearch(object exportObj, array p_email_list, array n_email
  function listExportFormats(number idformat){
 
 	array formatFields = Workflow.Format.listFieldsByFormat(idformat);
-	Console.println(formatFields);
+	
 	return formatFields;
 }
 
@@ -544,7 +545,8 @@ Created by : Kreshano Dutta
 	function generateCSV(array dataForFile, object export)
 	{
 		array collumnHeader;
-		string resultCSV = "",currentTimeStamp="",fileName = "";
+		string resultCSV = "",currentTimeStamp = "" + Date.GMTnow();
+		string fileName = "";
 		object fileWriteObject;
 		boolean flag;
 		number count = 0;
@@ -574,7 +576,7 @@ Created by : Kreshano Dutta
 			resultCSV += "\n";
 		};
 		
-		currentTimeStamp = "" + Date.GMTnow();
+		
 		fileName = export.name + currentTimeStamp + ".csv";
 
 		self.saveExports(fileName, resultCSV );
@@ -595,8 +597,10 @@ Created by : Kreshano Dutta
 		number count = 0;
 
 
+		//Console.println("inside xls generation");
 		//Console.println(dataForFile );
 		//dataForFile = ExportUtilities.makeUniqueRow(dataForFile);
+		
 
 		resultXLS =  "<html>\n";
 		resultXLS += "<head>\n";

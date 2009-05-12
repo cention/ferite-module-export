@@ -27,7 +27,7 @@ uses 'MailUtilities.feh';
 			return ;
 		}
 
-		else Console.println ( "Total available exports to run is ${exports.size()}" );
+		else Console.println ( "Total available exports to run is " + exports.size() );
 		/* all exports needing to be run */
 
 		exports.each() using (exportItem) {
@@ -52,6 +52,12 @@ uses 'MailUtilities.feh';
 			number should_processed = (webframework.Config.byName('Export.ErrandProcessed')[0].value).toNumber();
 			number noLoop,offset = 0;
 			number exportScriptFlag = 1;
+			number startDate = 0, endDate = 0;
+
+			startDate = (exportItem.start <0 ? (Date.GMTnow() + 
+				exportItem.start):exportItem.start);
+
+			endDate = (exportItem.finish <0 ? (Date.GMTnow() + exportItem.finish):exportItem.finish);
 
 			monitor{
 			
@@ -62,11 +68,11 @@ uses 'MailUtilities.feh';
 				}		
 					
 				if(exportItem.allerrandsflag){
-					//Console.println("all errand flag is true...");
-					totalErrandForExport = Workflow.Errand.countErrandsWithinIntervalForExport(Export.getSourceAreas(exportItem,exportScriptFlag),exportItem.start,exportItem.finish);
+					Console.println("all errand flag is true...");
+					totalErrandForExport = Workflow.Errand.countErrandsWithinIntervalForExport(Export.getSourceAreas(exportItem,exportScriptFlag),startDate,endDate);
 					
 					noLoop = ((totalErrandForExport * 1.00)/ should_processed).ceil();	
-					
+					Console.println("totla errands" +totalErrandForExport);
 						
 					
 					for(number i=0;i<noLoop;i++){
@@ -94,7 +100,7 @@ uses 'MailUtilities.feh';
 					searchPosTerms = Export.getParsedData(exportItem.positivesearchterms);
 					searchNegTerms = Export.getParsedData(exportItem.negativesearchterms);
 
-					totalErrandForSearch = Export.countErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms,should_processed,offset);
+					totalErrandForSearch = Export.countErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms,should_processed,offset,exportScriptFlag);
 
 					noLoop = ((totalErrandForSearch * 1.00)/ should_processed).ceil();
 					
@@ -106,8 +112,8 @@ uses 'MailUtilities.feh';
 						offset = i * should_processed ;
 						//Console.println(""+finalErrandsList);
 						
-						finalErrandsList =  Export.listErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms,should_processed,offset,1);					
-						Export.processExportData(exportItem,finalErrandsList,exportFormatFields,totalErrandForSearch,offset,1);
+						finalErrandsList =  Export.listErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms,should_processed,offset,exportScriptFlag);					
+						Export.processExportData(exportItem,finalErrandsList,exportFormatFields,totalErrandForSearch,offset,exportScriptFlag);
 					}
 
 					
