@@ -60,8 +60,13 @@ uses 'MailUtilities.feh';
 			endDate = (exportItem.finish <0 ? (Date.GMTnow() + exportItem.finish):exportItem.finish);
 
 			monitor{
+
 			
+				
 				Console.println("Export:" + exportItem.name + " is processing...");	
+				
+				exportItem.setValue('runningFlag',true);
+				exportItem.save();
 				
 				if(exportItem.exportFormat){
 					exportFormatFields = Export.listExportFormats(exportItem.exportFormat.id);	
@@ -119,6 +124,8 @@ uses 'MailUtilities.feh';
 					
 				}
 
+				exportItem.setValue('runningFlag',true);
+				exportItem.save();
 				return 1; //positive value means export is processed successfully	
  			}
  			handle{
