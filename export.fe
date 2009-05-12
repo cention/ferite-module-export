@@ -51,7 +51,7 @@ uses 'MailUtilities.feh';
 			number totalErrandForExport;
 			number should_processed = (webframework.Config.byName('Export.ErrandProcessed')[0].value).toNumber();
 			number noLoop,offset = 0;
-
+			number exportScriptFlag = 1;
 
 			monitor{
 			
@@ -61,22 +61,22 @@ uses 'MailUtilities.feh';
 					
 				if(exportItem.allerrandsflag){
 
-					totalErrandForExport = Workflow.Errand.countErrandsWithinIntervalForExport(Export.getSourceAreas(exportItem,1),exportItem.start,exportItem.finish);
+					totalErrandForExport = Workflow.Errand.countErrandsWithinIntervalForExport(Export.getSourceAreas(exportItem,exportScriptFlag),exportItem.start,exportItem.finish);
 					
 					noLoop = ((totalErrandForExport * 1.00)/ should_processed).ceil();	
 					
-					Console.println("total errand is : "+totalErrandForExport);		
+						
 					
 					for(number i=0;i<noLoop;i++){
 						
 						offset = i * should_processed ;
-						errandsList = Export.listErrandsByAllErrandsFlag(exportItem,should_processed,offset,1);
+						errandsList = Export.listErrandsByAllErrandsFlag(exportItem,should_processed,offset,exportScriptFlag);
 						
-						Export.processExportData(exportItem,errandsList,exportFormatFields,offset,totalErrandForExport,1);
+						Export.processExportData(exportItem,errandsList,exportFormatFields,offset,totalErrandForExport,exportScriptFlag);
 						
 					}
 	
-					Console.println("saving the export info....");
+					
 				}	
 				else { 	
 					array searchPosEmailList = [],searchNegEmailList = [];
@@ -89,8 +89,8 @@ uses 'MailUtilities.feh';
 					searchPosTerms = Export.getParsedData(exportItem.positivesearchterms);
 					searchNegTerms = Export.getParsedData(exportItem.negativesearchterms);
 						
-					finalErrandsList = Export.listErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms ,1);					
-					Export.processExportData(exportItem,finalErrandsList,exportFormatFields,1);
+					finalErrandsList = Export.listErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms ,exportScriptFlag);					
+					Export.processExportData(exportItem,finalErrandsList,exportFormatFields,exportScriptFlag);
 					
 				}
 
