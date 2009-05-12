@@ -48,6 +48,10 @@ uses 'MailUtilities.feh';
 
 			array errandsList;
 			array exportFormatFields;
+			number totalErrandForExport;
+			number should_processed = (webframework.Config.byName('Export.ErrandProcessed')[0].value).toNumber();
+			number noLoop,offset = 0;
+
 
 			monitor{
 			
@@ -56,9 +60,23 @@ uses 'MailUtilities.feh';
 				exportFormatFields = Export.listExportFormats(exportItem.exportFormat.id);			
 					
 				if(exportItem.allerrandsflag){
-					errandsList = Export.listErrandsByAllErrandsFlag(exportItem,1);
-					Export.processExportData(exportItem,errandsList,exportFormatFields,1);
-				
+
+					totalErrandForExport = Workflow.Errand.countErrandsWithinIntervalForExport(Export.getSourceAreas(exportItem,1),exportItem.start,exportItem.finish);
+					
+					noLoop = ((totalErrandForExport * 1.00)/ should_processed).ceil();	
+					
+					Console.println("total errand is : "+totalErrandForExport);		
+					
+					for(number i=0;i<noLoop;i++){
+						
+						offset = i * should_processed ;
+						errandsList = Export.listErrandsByAllErrandsFlag(exportItem,should_processed,offset,1);
+						
+						Export.processExportData(exportItem,errandsList,exportFormatFields,offset,totalErrandForExport,1);
+						
+					}
+	
+					Console.println("saving the export info....");
 				}	
 				else { 	
 					array searchPosEmailList = [],searchNegEmailList = [];
@@ -80,7 +98,7 @@ uses 'MailUtilities.feh';
 			}
 			handle{
 				
-				Console.println("Export ${exportItem.name} caused an error.");
+				Console.println(err.str);
 				return -1; //negative value means export is unsuccessful.
 			}
 

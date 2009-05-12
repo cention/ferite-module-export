@@ -33,7 +33,7 @@ function getSourceAreas (object exportAreas, number exportFlag){
 
 /* function listErrandsByAllErrandsFlag() is invoked when allerrandsflag is set to true. searchflag 1 means it is invoked from backend script and 0 means invoked from app */
 
-function listErrandsByAllErrandsFlag(object exportObj, number exportFlag) {
+function listErrandsByAllErrandsFlag(object exportObj, number limit, number offset, number exportFlag) {
 	
 	array errandsList= [];
 	
@@ -57,7 +57,7 @@ function listErrandsByAllErrandsFlag(object exportObj, number exportFlag) {
 		}
 		else if (exportFlag == 1){
 
-			Workflow.Errand.listErrandsWithinIntervalForExport(self.getSourceAreas(exportObj,1),startDate,endDate).each() using (errandItem)	{
+			Workflow.Errand.listErrandsWithinIntervalForExportWithLimit(self.getSourceAreas(exportObj,1),exportObj.start,exportObj.finish,limit,offset).each() using (errandItem)	{
 				errandsList[] = errandItem.id;
 		
 			};
@@ -70,7 +70,7 @@ function listErrandsByAllErrandsFlag(object exportObj, number exportFlag) {
 			
 		}
 	
-
+	Console.println(""+errandsList);
 	return errandsList;
 
 }
@@ -147,11 +147,10 @@ function listErrandsBySearch(object exportObj, array p_email_list, array n_email
 
 /* function processExportData() does the actual processing of export data. From this function generateExportInfo() in Workflow.fe is called to save current progress of export */
 
-function processExportData(object exportObj, array errandsList,array formatFields, number exportFlag){
+function processExportData(object exportObj, array errandsList,array formatFields,number _offset,number totalErrands, number exportFlag){
 		object exportInfo;
-		number totalErrands = 0;
-		number progress = 0;
-		number errandsProcessed = 0;
+		number progress;
+		number errandsProcessed = _offset;
 		number _exportStart = 0, _exportEnd = 0;
 		string filename = "";
 		array exportErrands = [];
@@ -160,132 +159,135 @@ function processExportData(object exportObj, array errandsList,array formatField
 
 		if(exportFlag){  //the export is for backend script.
 			_exportStart = Date.now();
-			totalErrands = errandsList.size();
+			//totalErrands = errandsList.size();
 		
 			exportInfo = Workflow.GeneratedExports.generateExportInfo(exportObj,filename,_exportStart,_exportEnd,totalErrands,progress);
 		}
 
+		Console.println("processing errands are: "+errandsList);
+
 		errandsList.each() using (errandItem)	{
 		
-		errandObj = Workflow.Errand.load(errandItem);
-		
-		errandsProcessed ++;	
-
-		if(Array.keyExists(formatFields, "errandId") ) {
-
-			temp[ "errandId" ] = "" + errandItem;
-		}
-
-		if(Array.keyExists(formatFields, "fromAddress") ){
-
-			temp[ "fromAddress" ] = "" + errandObj.mail.from.emailAddress;
-		}
+			errandObj = Workflow.Errand.load(errandItem);
 			
-		if(Array.keyExists(formatFields, "toAddress") ){
-			array receiverList;
-			errandObj.mail.to.each() using (value){
-				 receiverList[ ] = value.emailAddress;
-			};
-			temp[ "toAddress" ] = receiverList.join(',');
-		}
-			
-		if(Array.keyExists(formatFields, "subject") ){
-
-			temp[ "subject" ] = "" + errandObj.message.subject;
-		}
-		
-		if(Array.keyExists(formatFields, "question") ) {
-
-			temp[ "question" ] = "" + errandObj.message.body;
-		}
-
-		if(Array.keyExists(formatFields, "answer") ) {
-
-			temp[ "answer" ] = "" +(errandObj.answer ? (errandObj.answer.message?errandObj.answer.message.body:"null") : "null");
-
-		}
-		
-		if(Array.keyExists(formatFields, "arrived") ) {
-
-			temp[ "arrived" ] = Date.date(errandObj.timestampArrive).format("%Y/%m/%d") ;
-		}	
-		
-		if(Array.keyExists(formatFields, "opened") ) {
-
-			temp[ "opened" ]= (errandObj.timestampOpen > 0 ?Date.date(errandObj.timestampOpen).format("%Y/%m/%d"):"null") ;
-		}
-
-		if(Array.keyExists(formatFields, "answered") ) {
-
-			temp[ "answered" ] = (errandObj.timestampLastAnswered>0? Date.date(errandObj.timestampLastAnswered).format("%Y/%m/%d"):"null") ;
-		}
-
-		if(Array.keyExists(formatFields, "closed") ) {
-
-			temp[ "closed" ] = (errandObj.timestampClosed >0?Date.date(errandObj.timestampClosed).format("%Y/%m/%d"):"null");
-		}
-
-		if(Array.keyExists(formatFields, "agentid") ) {
-
-			temp[ "agentid" ] = (errandObj.owner?errandObj.owner.id: 0);
-		
-		}
-
-		if(Array.keyExists(formatFields, "agentname") ) {
-
-			temp[ "agentname" ] =  (errandObj.owner?errandObj.owner.username: "null");
-		}
+			errandsProcessed ++;	
 	
-		if(Array.keyExists(formatFields, "areaid") ) {
-			temp[ "areaid" ] = "" + errandObj.targetArea.id;
-		}
+			if(Array.keyExists(formatFields, "errandId") ) {
+	
+				temp[ "errandId" ] = "" + errandItem;
+			}
+	
+			if(Array.keyExists(formatFields, "fromAddress") ){
+	
+				temp[ "fromAddress" ] = "" + errandObj.mail.from.emailAddress;
+			}
+				
+			if(Array.keyExists(formatFields, "toAddress") ){
+				array receiverList;
+				errandObj.mail.to.each() using (value){
+					receiverList[ ] = value.emailAddress;
+				};
+				temp[ "toAddress" ] = receiverList.join(',');
+			}
+				
+			if(Array.keyExists(formatFields, "subject") ){
+	
+				temp[ "subject" ] = "" + errandObj.message.subject;
+			}
+			
+			if(Array.keyExists(formatFields, "question") ) {
+	
+				temp[ "question" ] = "" + errandObj.message.body;
+			}
+	
+			if(Array.keyExists(formatFields, "answer") ) {
+	
+				temp[ "answer" ] = "" +(errandObj.answer ? (errandObj.answer.message?errandObj.answer.message.body:"null") : "null");
+	
+			}
+			
+			if(Array.keyExists(formatFields, "arrived") ) {
+	
+				temp[ "arrived" ] = Date.date(errandObj.timestampArrive).format("%Y/%m/%d") ;
+			}	
+			
+			if(Array.keyExists(formatFields, "opened") ) {
+	
+				temp[ "opened" ]= (errandObj.timestampOpen > 0 ?Date.date(errandObj.timestampOpen).format("%Y/%m/%d"):"null") ;
+			}
+	
+			if(Array.keyExists(formatFields, "answered") ) {
+	
+				temp[ "answered" ] = (errandObj.timestampLastAnswered>0? Date.date(errandObj.timestampLastAnswered).format("%Y/%m/%d"):"null") ;
+			}
+	
+			if(Array.keyExists(formatFields, "closed") ) {
+	
+				temp[ "closed" ] = (errandObj.timestampClosed >0?Date.date(errandObj.timestampClosed).format("%Y/%m/%d"):"null");
+			}
+	
+			if(Array.keyExists(formatFields, "agentid") ) {
+	
+				temp[ "agentid" ] = (errandObj.owner?errandObj.owner.id: 0);
+			
+			}
+	
+			if(Array.keyExists(formatFields, "agentname") ) {
+	
+				temp[ "agentname" ] =  (errandObj.owner?errandObj.owner.username: "null");
+			}
 		
-		if(Array.keyExists(formatFields, "areaname") ) {
-			temp[ "areaname" ] = errandObj.targetArea.name;
-		}
+			if(Array.keyExists(formatFields, "areaid") ) {
+				temp[ "areaid" ] = "" + errandObj.targetArea.id;
+			}
 			
-		if(Array.keyExists(formatFields, "tags") ){
-			array tagList;
-			errandObj.tags.each() using (value){
-				tagList[] = value.display;
-			};
-			temp[ "tags" ] = tagList.join(',');
-		}
-
-		if(Array.keyExists(formatFields, "clientid") ){
-
-			temp[ "clientid" ] = "" + errandObj.client.id;
-		}
-
-		if(Array.keyExists(formatFields, "priority") ) {
-			
-			temp[ "priority" ] = "" + (errandObj.priority?errandObj.priority.name : "null"); 
-		}	
-			
+			if(Array.keyExists(formatFields, "areaname") ) {
+				temp[ "areaname" ] = errandObj.targetArea.name;
+			}
+				
+			if(Array.keyExists(formatFields, "tags") ){
+				array tagList;
+				errandObj.tags.each() using (value){
+					tagList[] = value.display;
+				};
+				temp[ "tags" ] = tagList.join(',');
+			}
+	
+			if(Array.keyExists(formatFields, "clientid") ){
+	
+				temp[ "clientid" ] = "" + errandObj.client.id;
+			}
+	
+			if(Array.keyExists(formatFields, "priority") ) {
+				
+				temp[ "priority" ] = "" + (errandObj.priority?errandObj.priority.name : "null"); 
+			}	
+				
 			exportErrands[] = temp;
 			temp[] = "";
-
-		if(exportFlag){
-			progress = (errandsProcessed * 100) / totalErrands;
-			exportInfo.setValue('progress',progress);
-			exportInfo.save();
-		}
+	
+			if(exportFlag){
+				progress = (errandsProcessed * 100) / totalErrands;
+				exportInfo.setValue('progress',progress);
+				exportInfo.save();
+			}
 	};
 
-	errandsProcessed = 0;
-	progress = 0;
-	
-	if(exportFlag){
+	Console.println("progress is : "+progress);	
+
+	if((exportFlag) and (progress == 100)){
+		Console.println("Will save the info.....");
 		self.saveExportsInfo(exportObj, exportInfo,  exportErrands);
 	}
 	return exportErrands;
 }
 
+
 function saveExportsInfo( object exportObj,object exportInfo, array exportErrands){
 		
 		string filename = "";
 		
-		
+		Console.println("fileName is: "+filename);
 		if(exportObj.type == 0 ){ // export to excel
 		
 			filename = self.generateXLS(exportErrands,exportObj);
@@ -298,7 +300,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 			
 			filename = self.generateXML(exportErrands,exportObj);
 		}
-
+		Console.println("fileName is: "+filename);
 		exportInfo.setValue('filename',filename);
 		exportInfo.setValue('finish', Date.now());
 
