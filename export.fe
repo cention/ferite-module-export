@@ -124,7 +124,7 @@ uses 'MailUtilities.feh';
 					
 				}
 
-				exportItem.setValue('runningFlag',true);
+				exportItem.setValue('runningFlag',false);
 				exportItem.save();
 				return 1; //positive value means export is processed successfully	
  			}
