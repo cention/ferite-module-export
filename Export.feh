@@ -227,8 +227,9 @@ function processExportData(object exportObj, array errandsList,array formatField
 			}
 	
 			if(Array.keyExists(formatFields, "fromAddress") ){
-	
-				temp[ "fromAddress" ] = "" + errandObj.mail.from.emailAddress;
+				if(errandObj.mail){
+					temp[ "fromAddress" ] = "" + errandObj.mail.from.emailAddress;
+				}
 			}
 				
 			if(Array.keyExists(formatFields, "toAddress") ){
@@ -360,8 +361,10 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		exportObj.setValue('shouldgenerateflag', false);
 		exportObj.save();
 		
-		if(exportObj.emailflag == true)
+		if(exportObj.emailflag == true){
+			Console.println("sending Export to owner....");
 			self.sendExportToOwner(exportObj, filename);
+		}
 		
 	}
 
@@ -372,7 +375,6 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		object text = new Mail.MessagePart();
 		object to = new Mail.Address( mail.to[0].emailAddress);
 		object from = new Mail.Address(mail.from.emailAddress );
-
 		message.header = new Mail.MessageHeader();
 
 		
@@ -416,17 +418,17 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 
 	function sendInternalMsg(object exportObj){
 
-		object objSender = new Workflow.User();
+		object objSender; 
 		object simpleMessage = new Workflow.SimpleMessage();
 		object inboxMessage = new Workflow.InternalMessage();
 		object sentMessage = new Workflow.InternalMessage();
 		object  exportOwnerUserObj;
 		number timestampSent = Date.GMTnow();		
-				
-		exportOwnerUserObj = Workflow.User.load(exportObj.createdby.id);
 		
-		objSender.setValue( 'username',"sysadmin");
-		objSender.save();
+
+		
+		exportOwnerUserObj = Workflow.User.load(exportObj.createdby.id);
+		objSender = Workflow.User.fetchUserObject(exportObj.createdby.id);
 
 		simpleMessage.setValue( 'subject', "Cention Exports" );
 		simpleMessage.setValue( 'body', "Export is finished." );
@@ -445,6 +447,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		inboxMessage.setValue( 'message', simpleMessage );
 		inboxMessage.setValue( 'folder', Workflow.InternalFolder.fetch(Workflow.InternalFolder.INBOX));
 		inboxMessage.setValue( 'targets', [exportOwnerUserObj]);
+		inboxMessage.setValue( 'origin', objSender );
 		inboxMessage.save();
 
 
@@ -490,6 +493,9 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
  		
 			ObjMailReceiver.setValue( 'emailAddress', addrFrom );
  			ObjMailReceiver.save();
+
+// 			objMailSender = Workflow.MailOrigin.createByAddress(addrToSend);
+// 			objMailSender = Workflow.MailOrigin.createByAddress(addrFrom);
 
  			mail = new Workflow.Mail();
  
