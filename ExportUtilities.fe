@@ -13,9 +13,10 @@ namespace ExportUtilities{
 		string output="";
 	
 		A.eachWithIndex() using ( arr , idx ) {
-				
-					if ( idx > 0 ) output = output + delim + arr;
-					else output = output + arr;
+					if ( arr.length() > 0) {
+						if ( idx > 0 ) output = output + delim + arr;
+						else output = output + arr;
+					}
 		};
 		return output;
 	}
@@ -36,6 +37,19 @@ namespace ExportUtilities{
 	
 		return output;
 	
+	}
+
+	function getKeys( array A ) {
+		
+		array output=[];
+	
+		A.eachWithIndex() using ( arr ,idx)  {
+
+				output[] = A.getName(idx);
+
+		};
+		return output;
+
 	}
 	
 	function removeDuplicate ( array A ) {
@@ -69,12 +83,33 @@ namespace ExportUtilities{
 	
 		return output;
 	}
+
+	function debug( string str, void p2 ) {
+	
+		//Console.println("the Format is $str");
+		//Console.println(p2);
+	
+	}
 	
 	function makeUniqueRow( array A ) {
 		array tmp1 = self.process2DArrayToString(A);
 		array tmp2 = self.removeDuplicate( tmp1)  ;
-	
-		return self.dissect1D22DArray(tmp2,":");
+		array out;			
+		out = self.dissect1D22DArray(tmp2,":");	
+		return out;
+		
+	}	
+
+	function combineDataWithKeys( array data, array keys) {
+
+		array output=[];
+		data.each() using ( d ) {
+
+			output[] = Array.combine(keys,d);
+		};
+		
+		return output;
+
 	}
-	
 }
+

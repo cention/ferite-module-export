@@ -178,13 +178,19 @@ function listErrandsBySearch(object exportObj, array p_email_list, array n_email
 
 }
 
+function debug( string str, void p2 ) {
+
+	//Console.println("$str:");
+	//Console.println(p2);
+
+}
+
 
 /* function listExportFormats() get all the selected formats the export will use */
 
  function listExportFormats(number idformat){
 
-	array formatFields = Workflow.Format.listFieldsByFormat(idformat);
-	
+	array formatFields = Workflow.Format.listFieldsByFormat(idformat);	
 	return formatFields;
 }
 
@@ -537,6 +543,19 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 	}
 	
 
+	function uniqueRow(array A ) {
+		array keys;
+		array out;
+		
+		if ( A.size() == 0 ) return A;		
+		keys = ExportUtilities.getKeys(A[0]);		
+		A =  ExportUtilities.makeUniqueRow(A);		
+		out = ExportUtilities.combineDataWithKeys(A,keys);		
+		return out;
+
+	}
+
+
 /*************Function for match Generating CSV file*****************************/	
 /*************Function for match Generating CSV file
 Created by : Kreshano Dutta
@@ -545,7 +564,7 @@ Created by : Kreshano Dutta
 	function generateCSV(array dataForFile, object export)
 	{
 		array collumnHeader;
-		string resultCSV = "",currentTimeStamp = "" + Date.GMTnow();
+		string resultCSV = "",currentTimeStamp = self.getTimestamp();
 		string fileName = "";
 		object fileWriteObject;
 		boolean flag;
@@ -554,7 +573,7 @@ Created by : Kreshano Dutta
 		
 		//dataForFile = ExportUtilities.makeUniqueRow(dataForFile);
 		//Console.println ( dataForFile );
-		
+		dataForFile = self.uniqueRow(dataForFile);
 
 		dataForFile and dataForFile[0].each() using( temp )
 		{
@@ -584,6 +603,11 @@ Created by : Kreshano Dutta
 	}
 
 
+	function getTimestamp() {
+	
+		return Date.date(Date.GMTnow()).format("%Y%m%d-%I%M");
+
+	}
 
 /*************Function for match Generating XLS file
 Created by : Kreshano Dutta
@@ -593,14 +617,14 @@ Created by : Kreshano Dutta
 		string resultXLS = "",fileName = "";
 		object fileWriteObject;
 		array collumnHeader;
-		string currentTimeStamp = "" + Date.GMTnow();
+		string currentTimeStamp = self.getTimestamp();
 		number count = 0;
 
 
 		//Console.println("inside xls generation");
 		//Console.println(dataForFile );
 		//dataForFile = ExportUtilities.makeUniqueRow(dataForFile);
-		
+		dataForFile = self.uniqueRow(dataForFile);
 
 		resultXLS =  "<html>\n";
 		resultXLS += "<head>\n";
@@ -658,11 +682,13 @@ Created by : Kreshano Dutta
 		array tagName;
 		string resultXML = "",fileName = "" ;
 		object fileWriteObject;
- 		string currentTimeStamp = "" + Date.GMTnow();	
+ 		string currentTimeStamp = self.getTimestamp();	
 		number count = 0;
 
 		//Console.println(dataForFile );
 		//dataForFile = ExportUtilities.makeUniqueRow(dataForFile);
+
+		dataForFile = self.uniqueRow(dataForFile);
 		
 		dataForFile and dataForFile[0].each() using( temp )
 		{
