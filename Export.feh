@@ -3,6 +3,8 @@ namespace Export {
 
 /* function getSourceAreas() gets the source errand areas IDs for export */
 
+string timeStampFormat = "%Y/%m/%d-%I:%M";
+
 function getSourceAreas (object exportAreas, number exportFlag){
 		array idAreas = [];
 
@@ -196,7 +198,7 @@ function debug( string str, void p2 ) {
 
 /* function processExportData() does the actual processing of export data. From this function generateExportInfo() in Workflow.fe is called to save current progress of export */
 
-function processExportData(object exportObj, array errandsList,array formatFields,number totalErrands, number _offset, number exportFlag){
+function processExportData(object exportObj, array errandsList,array formatFields,number totalErrands, number _offset, number exportFlag, string fileName){
 		object exportInfo;
 		number progress = 0;
 		number errandsProcessed = _offset;
@@ -258,22 +260,22 @@ function processExportData(object exportObj, array errandsList,array formatField
 			
 			if(Array.keyExists(formatFields, "arrived") ) {
 	
-				temp[ "arrived" ] = Date.date(errandObj.timestampArrive).format("%Y/%m/%d") ;
+				temp[ "arrived" ] = Date.date(errandObj.timestampArrive).format(self.timeStampFormat) ;
 			}	
 			
 			if(Array.keyExists(formatFields, "opened") ) {
 	
-				temp[ "opened" ]= (errandObj.timestampOpen > 0 ?Date.date(errandObj.timestampOpen).format("%Y/%m/%d"):"null") ;
+				temp[ "opened" ]= (errandObj.timestampOpen > 0 ?Date.date(errandObj.timestampOpen).format(self.timeStampFormat):"null") ;
 			}
 	
 			if(Array.keyExists(formatFields, "answered") ) {
 	
-				temp[ "answered" ] = (errandObj.timestampLastAnswered>0? Date.date(errandObj.timestampLastAnswered).format("%Y/%m/%d"):"null") ;
+				temp[ "answered" ] = (errandObj.timestampLastAnswered>0? Date.date(errandObj.timestampLastAnswered).format(self.timeStampFormat):"null") ;
 			}
 	
 			if(Array.keyExists(formatFields, "closed") ) {
 	
-				temp[ "closed" ] = (errandObj.timestampClosed >0?Date.date(errandObj.timestampClosed).format("%Y/%m/%d"):"null");
+				temp[ "closed" ] = (errandObj.timestampClosed >0?Date.date(errandObj.timestampClosed).format(self.timeStampFormat):"null");
 			}
 	
 			if(Array.keyExists(formatFields, "agentid") ) {
@@ -316,54 +318,72 @@ function processExportData(object exportObj, array errandsList,array formatField
 			exportErrands[] = temp;
 			temp[] = "";
 	
-			if(exportFlag and totalErrands){
+			
+	};
+
+	if(exportFlag and totalErrands){				
+				
 				progress = (errandsProcessed * 100) / totalErrands;
 				exportInfo.setValue('progress',progress);
 				exportInfo.save();
-			}
-	};
+
+				if ( _offset == 0 and progress != 100) {
+					self.saveExportsInfo(exportObj, exportInfo,  exportErrands,"start",fileName);
+				}
+				else if ( _offset > 0 and progress < 100 ){
+					self.saveExportsInfo(exportObj, exportInfo,  exportErrands,"middle",fileName);
+
+				}
+				else if ( progress >= 100 ) {
+					self.saveExportsInfo(exportObj, exportInfo,  exportErrands,"end",fileName);
+				}				
+	}
 
 	//Console.println("Progress is: "+progress);
 
-	if((exportFlag) and (progress == 100)){
-		
-		self.saveExportsInfo(exportObj, exportInfo,  exportErrands);
-	}
+// 	if( exportFlag ){
+// 		
+// 		
+// 		self.saveExportsInfo(exportObj, exportInfo,  exportErrands);
+// 	}
 	return exportErrands;
 }
 
 
-function saveExportsInfo( object exportObj,object exportInfo, array exportErrands){
-		
-		string filename = "";
+function saveExportsInfo( object exportObj,object exportInfo, array exportErrands, string status,string fileName){
 		
 		
+		string currentTimeStamp = self.getTimestamp();		
 		if(exportObj.type == 0 ){ // export to excel
 		
-			filename = self.generateXLS(exportErrands,exportObj);
+			//fileName = exportObj.name + currentTimeStamp + ".xls";			
+			self.generateXLS(exportErrands,exportObj,status,fileName);
 		}
 		else if(exportObj.type == 1 ){ // export to csv
-			
-			filename = self.generateCSV(exportErrands,exportObj);
+
+			//fileName = exportObj.name + currentTimeStamp + ".csv";
+			self.generateCSV(exportErrands,exportObj,status,fileName);
 		}
 		else if(exportObj.type == 2 ){ // export to xml
-			
-			filename = self.generateXML(exportErrands,exportObj);
+
+			//fileName = exportObj.name + currentTimeStamp + ".xml";
+			self.generateXML(exportErrands,exportObj,status,fileName);
 		}
 		
-		exportInfo.setValue('filename',filename);
-		exportInfo.setValue('finish', Date.now());
 
-		exportInfo.save();
-		
+		if ( "end" == status ) {
+			exportInfo.setValue('filename',fileName);
+			exportInfo.setValue('finish', Date.now());
+			exportInfo.save();		
 		/* the export is finished and progress is 100 %, so  the export scheduled flag is set to false  */
 
-		exportObj.setValue('shouldgenerateflag', false);
-		exportObj.save();
+			exportObj.setValue('shouldgenerateflag', false);
+			exportObj.save();
 		
-		if(exportObj.emailflag == true){
-			Console.println("sending Export to owner....");
-			self.sendExportToOwner(exportObj, filename);
+			if(exportObj.emailflag == true){
+				Console.println("sending Export to owner....");
+				self.sendExportToOwner(exportObj, fileName);
+			}
 		}
 		
 	}
@@ -534,17 +554,38 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 
 	}
 
-	function saveExports(string filename, string results){
+	function saveExports(string fileName, string results){
 		string path ;
-		string exportsDirectory = (Config.CachePath - 'Cache/') + 'Exports';
 
-		path = "${exportsDirectory}";
+		string exportsDirectory = (Config.CachePath - 'Cache/') + 'Exports/';
+		object file;
+		fileName = exportsDirectory + fileName;
+		file = File.open( fileName ,FileSystem.O_RDWR );
 
-			not Directory.open( path ) and Directory.make( path, 0755 );
+		
 
-			File.create( "${path}/${filename}" ) using ( file ) {
-				file.writeln( results );
+		
+
+
+		if ( file ) {
+
+				
+				file.seek(0,Stream.SEEK_END);
+				file.write(results);
+				//file.close();
+				
+		}
+		else {
+			Posix.umask( 0 );
+			File.create( fileName , 0777) using ( f ) {
+						
+						
+						f.write( results );
+						//f.close();
 			};
+		}
+
+		
 
 	}
 	
@@ -555,8 +596,9 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		
 		if ( A.size() == 0 ) return A;		
 		keys = ExportUtilities.getKeys(A[0]);		
-		A =  ExportUtilities.makeUniqueRow(A);		
-		out = ExportUtilities.combineDataWithKeys(A,keys);		
+		A =  ExportUtilities.makeUniqueRow(A);
+		out = ExportUtilities.combineDataWithKeys(A,keys);	
+		
 		return out;
 
 	}
@@ -567,18 +609,14 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 Created by : Kreshano Dutta
 ************************************************/	
 
-	function generateCSV(array dataForFile, object export)
+	function generateCSV(array dataForFile, object export, string status, string fileName)
 	{
 		array collumnHeader;
-		string resultCSV = "",currentTimeStamp = self.getTimestamp();
-		string fileName = "";
+		string resultCSV = "",currentTimeStamp = self.getTimestamp();		
 		object fileWriteObject;
 		boolean flag;
-		number count = 0;
+		number count = 0;	
 
-		
-		//dataForFile = ExportUtilities.makeUniqueRow(dataForFile);
-		//Console.println ( dataForFile );
 		dataForFile = self.uniqueRow(dataForFile);
 
 		dataForFile and dataForFile[0].each() using( temp )
@@ -601,9 +639,8 @@ Created by : Kreshano Dutta
 			resultCSV += "\n";
 		};
 		
-		
-		fileName = export.name + currentTimeStamp + ".csv";
 
+		
 		self.saveExports(fileName, resultCSV );
 		return fileName;
 	}
@@ -618,44 +655,49 @@ Created by : Kreshano Dutta
 /*************Function for match Generating XLS file
 Created by : Kreshano Dutta
 ************************************************/	
-	function generateXLS( array dataForFile, object export )
+	function generateXLS( array dataForFile, object export, string status,string fileName )
 	{
-		string resultXLS = "",fileName = "";
+		string resultXLS = "";
 		object fileWriteObject;
 		array collumnHeader;
 		string currentTimeStamp = self.getTimestamp();
-		number count = 0;
+		number count = 0;		
 
-
-		//Console.println("inside xls generation");
-		//Console.println(dataForFile );
-		//dataForFile = ExportUtilities.makeUniqueRow(dataForFile);
 		dataForFile = self.uniqueRow(dataForFile);
 
-		resultXLS =  "<html>\n";
-		resultXLS += "<head>\n";
-		resultXLS += "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n";
-		resultXLS += "</head>\n";
-		
-		resultXLS += "<body>\n";
-		resultXLS += "<table border=1>\n";
-	
-		resultXLS += "<tr>\n";
 
-		
 		dataForFile and dataForFile[0].each() using( temp )
 		{
 			collumnHeader[] = Array.getName(dataForFile[0],count);
 			count++;
 		};
-		
-		
-		collumnHeader.each() using ( collumn )
-		{
-			resultXLS += "<td>" + collumn + "</td>";
-		};
 
-		resultXLS += "</tr>\n";
+		if ("start" == status || "complete" == status ) { 
+
+			resultXLS =  "<html>\n";
+			resultXLS += "<head>\n";
+			resultXLS += "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n";
+			resultXLS += "</head>\n";
+			
+			resultXLS += "<body>\n";
+			resultXLS += "<table border=1>\n";
+			resultXLS += "<tr>\n";
+
+		
+			
+			
+			collumnHeader.each() using ( collumn )
+			{
+				resultXLS += "<td>" + collumn + "</td>";
+			};
+	
+			resultXLS += "</tr>\n";
+		}
+		
+		
+
+		
+	
 		
 		dataForFile.each() using ( tempArray )
 		{
@@ -667,15 +709,16 @@ Created by : Kreshano Dutta
 			resultXLS += "</tr>\n";	
 		};
 		
-		
-		resultXLS += "</table>\n";
-		resultXLS += "</body>\n";	
-		resultXLS +=  "</html>";	
-		
-		fileName = export.name + currentTimeStamp + ".xls";
-		
+		if ( "end" == status || "complete" == status ) {
+			resultXLS += "</table>\n";
+			resultXLS += "</body>\n";	
+			resultXLS +=  "</html>";	
+			
+		}
+		//fileName = export.name + currentTimeStamp + ".xls";
 		self.saveExports(fileName, resultXLS );
 		return fileName;
+
 	}
 
 
@@ -683,17 +726,15 @@ Created by : Kreshano Dutta
 Created by : Kreshano Dutta
 ************************************************/	
 
-	function generateXML(array dataForFile, object export )
+	function generateXML(array dataForFile, object export , string status, string fileName )
 	{
 		array tagName;
-		string resultXML = "",fileName = "" ;
+		string resultXML = "";
 		object fileWriteObject;
  		string currentTimeStamp = self.getTimestamp();	
 		number count = 0;
 
-		//Console.println(dataForFile );
-		//dataForFile = ExportUtilities.makeUniqueRow(dataForFile);
-
+		
 		dataForFile = self.uniqueRow(dataForFile);
 		
 		dataForFile and dataForFile[0].each() using( temp )
@@ -702,9 +743,10 @@ Created by : Kreshano Dutta
 			count++;
 		};
 
-		
-		resultXML += "<root>";
-		resultXML += "\n";
+		if ( "start" == status ) {
+			resultXML += "<root>";
+			resultXML += "\n";
+		}
 
 		dataForFile.each() using ( tempArray )
 		{
@@ -719,11 +761,11 @@ Created by : Kreshano Dutta
 			resultXML += "\n";
 		};
 	
-		resultXML += "</root>";
-		resultXML += "\n";
+		if ( "end" == status ) {
+			resultXML += "</root>";
+			resultXML += "\n";
+		}
 
-		fileName = export.name + currentTimeStamp + ".xml";
-		
 		self.saveExports(fileName, resultXML );
 		return fileName;
 	}

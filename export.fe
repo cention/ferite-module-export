@@ -53,6 +53,11 @@ uses 'MailUtilities.feh';
 			number noLoop,offset = 0;
 			number exportScriptFlag = 1;
 			number startDate = 0, endDate = 0;
+			string fileName;
+
+			string currentTimeStamp = Date.date(Date.GMTnow()).format("%Y%m%d-%I%M");
+			
+			fileName = exportItem.name + currentTimeStamp;
 
 			startDate = (exportItem.start <0 ? (Date.GMTnow() + 
 				exportItem.start):exportItem.start);
@@ -80,13 +85,13 @@ uses 'MailUtilities.feh';
 					//Console.println("totla errands" +totalErrandForExport);
 						
 					
-					for(number i=0;i<noLoop;i++){
+					for(number i=0; ( (i<noLoop) and exportItem.runningFlag) ;i++){
 						
 						offset = i * should_processed ;
 						errandsList = Export.listErrandsByAllErrandsFlag(exportItem,should_processed,offset,exportScriptFlag);
 						
 						
-						Export.processExportData(exportItem,errandsList,exportFormatFields,totalErrandForExport,offset,exportScriptFlag);
+						Export.processExportData(exportItem,errandsList,exportFormatFields,totalErrandForExport,offset,exportScriptFlag,fileName);
 						
 					}
 	

@@ -1,7 +1,5 @@
 uses "console","array";
 
-
-
 /*
 	This function convert an array to a string. The Array field is separated by the delim parameter.
 	output = arrayToString(["hi","how","are","you"],":");
@@ -93,8 +91,9 @@ namespace ExportUtilities{
 	
 	function makeUniqueRow( array A ) {
 		array tmp1 = self.process2DArrayToString(A);
-		array tmp2 = self.removeDuplicate( tmp1)  ;
+		array tmp2 = self.removeDuplicate( tmp1)  ;	
 		array out;			
+		//self.debug("",tmp2);
 		out = self.dissect1D22DArray(tmp2,":");	
 		return out;
 		
