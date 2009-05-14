@@ -123,7 +123,7 @@ uses 'MailUtilities.feh';
 						//Console.println(""+finalErrandsList);
 						
 						finalErrandsList =  Export.listErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms,should_processed,offset,exportScriptFlag);					
-						Export.processExportData(exportItem,finalErrandsList,exportFormatFields,totalErrandForSearch,offset,exportScriptFlag);
+						Export.processExportData(exportItem,finalErrandsList,exportFormatFields,totalErrandForSearch,offset,exportScriptFlag,fileName);
 					}
 
 					
