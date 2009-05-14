@@ -82,7 +82,8 @@ uses 'MailUtilities.feh';
 					totalErrandForExport = Workflow.Errand.countErrandsWithinIntervalForExport(Export.getSourceAreas(exportItem,exportScriptFlag),startDate,endDate);
 					
 					noLoop = ((totalErrandForExport * 1.00)/ should_processed).ceil();	
-					//Console.println("totla errands" +totalErrandForExport);
+					Console.println("totla errands" +totalErrandForExport);
+					
 						
 					
 					for(number i=0; ( (i<noLoop) and exportItem.runningFlag) ;i++){
@@ -111,6 +112,7 @@ uses 'MailUtilities.feh';
 					searchNegTerms = Export.getParsedData(exportItem.negativesearchterms);
 
 					totalErrandForSearch = Export.countErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms,should_processed,offset);
+					Console.println("total errands for search:" + totalErrandForSearch);
 
 					noLoop = ((totalErrandForSearch * 1.00)/ should_processed).ceil();
 					

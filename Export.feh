@@ -182,8 +182,8 @@ function listErrandsBySearch(object exportObj, array p_email_list, array n_email
 
 function debug( string str, void p2 ) {
 
-	//Console.println("$str:");
-	//Console.println(p2);
+	Console.println("$str:");
+	Console.println(p2);
 
 }
 
@@ -330,10 +330,13 @@ function processExportData(object exportObj, array errandsList,array formatField
 				if ( _offset == 0 and progress != 100) {
 					self.saveExportsInfo(exportObj, exportInfo,  exportErrands,"start",fileName);
 				}
+				else if ( _offset == 0 and progress == 100 ){
+					self.saveExportsInfo(exportObj, exportInfo,  exportErrands,"complete",fileName);
+				}
 				else if ( _offset > 0 and progress < 100 ){
 					self.saveExportsInfo(exportObj, exportInfo,  exportErrands,"middle",fileName);
 
-				}
+				}				
 				else if ( progress >= 100 ) {
 					self.saveExportsInfo(exportObj, exportInfo,  exportErrands,"end",fileName);
 				}				
@@ -356,17 +359,17 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		string currentTimeStamp = self.getTimestamp();		
 		if(exportObj.type == 0 ){ // export to excel
 		
-			//fileName = exportObj.name + currentTimeStamp + ".xls";			
+			fileName = fileName + ".xls";			
 			self.generateXLS(exportErrands,exportObj,status,fileName);
 		}
 		else if(exportObj.type == 1 ){ // export to csv
 
-			//fileName = exportObj.name + currentTimeStamp + ".csv";
+			fileName = fileName + ".csv";
 			self.generateCSV(exportErrands,exportObj,status,fileName);
 		}
 		else if(exportObj.type == 2 ){ // export to xml
 
-			//fileName = exportObj.name + currentTimeStamp + ".xml";
+			fileName = fileName + ".xml";
 			self.generateXML(exportErrands,exportObj,status,fileName);
 		}
 		
@@ -569,7 +572,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 
 		if ( file ) {
 
-				
+				self.debug("creating file $fileName",1);
 				file.seek(0,Stream.SEEK_END);
 				file.write(results);
 				//file.close();
@@ -579,7 +582,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 			Posix.umask( 0 );
 			File.create( fileName , 0777) using ( f ) {
 						
-						
+						self.debug("Creating file $fileName",1);		
 						f.write( results );
 						//f.close();
 			};
@@ -666,6 +669,9 @@ Created by : Kreshano Dutta
 		dataForFile = self.uniqueRow(dataForFile);
 
 
+		
+		self.debug("creating $fileName with status $status",dataForFile);
+	
 		dataForFile and dataForFile[0].each() using( temp )
 		{
 			collumnHeader[] = Array.getName(dataForFile[0],count);
@@ -691,6 +697,7 @@ Created by : Kreshano Dutta
 				resultXLS += "<td>" + collumn + "</td>";
 			};
 	
+			resultXLS += "\n";
 			resultXLS += "</tr>\n";
 		}
 		
