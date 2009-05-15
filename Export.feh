@@ -544,9 +544,11 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
  		
 
  			Console.println("Finished.");
- 			Console.println("Sending E-mail to export owner...");
+ 			Console.println("Sending E-mail to export owner... using ${MailUtilities.selectMailServer()}");
  
- 			MailUtilities.sendMessage(connection,self.createExportMessage(mail) );
+ 			if( not MailUtilities.sendMessage(connection,self.createExportMessage(mail) ) ) {
+				Console.println("Unable to send email.");
+			}
 		
  			Console.println("Sending internal message to the user...");
 
