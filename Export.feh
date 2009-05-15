@@ -259,22 +259,22 @@ function processExportData(object exportObj, array errandsList,array formatField
 			
 			if(Array.keyExists(formatFields, "arrived") ) {
 	
-				temp[ "arrived" ] = Date.date(errandObj.timestampArrive).format(self.timeStampFormat) ;
+				temp[ "arrived" ] = formatDateTime(errandObj.timestampArrive) ;
 			}	
 			
 			if(Array.keyExists(formatFields, "opened") ) {
 	
-				temp[ "opened" ]= (errandObj.timestampOpen > 0 ?Date.date(errandObj.timestampOpen).format(self.timeStampFormat):"-") ;
+				temp[ "opened" ]= (errandObj.timestampOpen > 0 ?formatDateTime(errandObj.timestampOpen):"-") ;
 			}
 	
 			if(Array.keyExists(formatFields, "answered") ) {
 	
-				temp[ "answered" ] = (errandObj.timestampLastAnswered>0? Date.date(errandObj.timestampLastAnswered).format(self.timeStampFormat):"-") ;
+				temp[ "answered" ] = (errandObj.timestampLastAnswered>0? formatDateTime(errandObj.timestampLastAnswered):"-") ;
 			}
 	
 			if(Array.keyExists(formatFields, "closed") ) {
 	
-				temp[ "closed" ] = (errandObj.timestampClosed >0?Date.date(errandObj.timestampClosed).format(self.timeStampFormat):"-");
+				temp[ "closed" ] = (errandObj.timestampClosed >0?formatDateTime(errandObj.timestampClosed):"-");
 			}
 	
 			if(Array.keyExists(formatFields, "agentid") ) {
