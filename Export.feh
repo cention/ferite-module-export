@@ -3,7 +3,7 @@ namespace Export {
 
 /* function getSourceAreas() gets the source errand areas IDs for export */
 
-string timeStampFormat = "%Y/%m/%d-%I:%M";
+string timeStampFormat = "%Y/%m/%d-%H:%M";
 
 function getSourceAreas (object exportAreas, number exportFlag){
 		array idAreas = [];
@@ -182,9 +182,7 @@ function listErrandsBySearch(object exportObj, array p_email_list, array n_email
 
 function debug( string str, void p2 ) {
 
-	Console.println("$str:");
-	Console.println(p2);
-
+	Console.println("$p2: $str");
 }
 
 
@@ -222,6 +220,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 			errandObj = Workflow.Errand.load(errandItem);
 			
 			errandsProcessed ++;	
+			Console.println("Processed $errandsProcessed errands...");
 	
 			if(Array.keyExists(formatFields, "errandId") ) {
 	
@@ -254,7 +253,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 	
 			if(Array.keyExists(formatFields, "answer") ) {
 	
-				temp[ "answer" ] = "" +(errandObj.answer ? (errandObj.answer.message?errandObj.answer.message.body:"null") : "null");
+				temp[ "answer" ] = "" +(errandObj.answer ? (errandObj.answer.message?errandObj.answer.message.body:"") : "-");
 	
 			}
 			
@@ -265,17 +264,17 @@ function processExportData(object exportObj, array errandsList,array formatField
 			
 			if(Array.keyExists(formatFields, "opened") ) {
 	
-				temp[ "opened" ]= (errandObj.timestampOpen > 0 ?Date.date(errandObj.timestampOpen).format(self.timeStampFormat):"null") ;
+				temp[ "opened" ]= (errandObj.timestampOpen > 0 ?Date.date(errandObj.timestampOpen).format(self.timeStampFormat):"-") ;
 			}
 	
 			if(Array.keyExists(formatFields, "answered") ) {
 	
-				temp[ "answered" ] = (errandObj.timestampLastAnswered>0? Date.date(errandObj.timestampLastAnswered).format(self.timeStampFormat):"null") ;
+				temp[ "answered" ] = (errandObj.timestampLastAnswered>0? Date.date(errandObj.timestampLastAnswered).format(self.timeStampFormat):"-") ;
 			}
 	
 			if(Array.keyExists(formatFields, "closed") ) {
 	
-				temp[ "closed" ] = (errandObj.timestampClosed >0?Date.date(errandObj.timestampClosed).format(self.timeStampFormat):"null");
+				temp[ "closed" ] = (errandObj.timestampClosed >0?Date.date(errandObj.timestampClosed).format(self.timeStampFormat):"-");
 			}
 	
 			if(Array.keyExists(formatFields, "agentid") ) {
@@ -286,7 +285,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 	
 			if(Array.keyExists(formatFields, "agentname") ) {
 	
-				temp[ "agentname" ] =  (errandObj.owner?errandObj.owner.username: "null");
+				temp[ "agentname" ] =  (errandObj.owner?errandObj.owner.username: "-");
 			}
 		
 			if(Array.keyExists(formatFields, "areaid") ) {
@@ -312,7 +311,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 	
 			if(Array.keyExists(formatFields, "priority") ) {
 				
-				temp[ "priority" ] = "" + (errandObj.priority?errandObj.priority.name : "null"); 
+				temp[ "priority" ] = "" + (errandObj.priority?errandObj.priority.name : "-"); 
 			}	
 				
 			exportErrands[] = temp;
@@ -384,7 +383,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 			exportObj.save();
 		
 			if(exportObj.emailflag == true){
-				Console.println("sending Export to owner....");
+				Console.println("Sending Export to owner....");
 				self.sendExportToOwner(exportObj, fileName);
 			}
 		}
@@ -490,15 +489,18 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
  		string exportsDirectory = (Config.CachePath - 'Cache/') + 'Exports';
  
  		string subject = "Cention Exports";
- 		string msgContent = "Hi,Your order for export is completed and the generated file is attached herewith. Thanks a lot.";
+ 		string msgContent = I('Your export {0:1} has been completed. Please find it attached to this email.').expand(export.name);
 
 		object exportOwnerEmail = Workflow.User.load(export.createdby.id);
 		object connection = new Mail.Connection();
 	
 		
 		addrToSend = (exportOwnerEmail.person ? (exportOwnerEmail.person.email?exportOwnerEmail.person.email.emailAddress:""):"");
-
-		addrFrom = "sys@cention.se";
+		if( export.optionalAddress ) {
+			addrToSend = export.optionalAddress;
+		}
+		
+		addrFrom = "no-reply@cention.se";
 
  		if (addrToSend == "") {
 			Console.println("The export owner provides no email address.");
@@ -506,19 +508,15 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		}
 		else {
 		
+			Console.println("Sending export from $addrFrom to $addrToSend");
  			objMailSender =  new Workflow.MailOrigin();
  			ObjMailReceiver = new Workflow.MailOrigin();
-		
-		
 		
  			objMailSender.setValue( 'emailAddress', addrToSend );
  			objMailSender.save();
  		
 			ObjMailReceiver.setValue( 'emailAddress', addrFrom );
  			ObjMailReceiver.save();
-
-// 			objMailSender = Workflow.MailOrigin.createByAddress(addrToSend);
-// 			objMailSender = Workflow.MailOrigin.createByAddress(addrFrom);
 
  			mail = new Workflow.Mail();
  
@@ -554,7 +552,6 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 
 			self.sendInternalMsg(export);
 		}
-
 	}
 
 	function saveExports(string fileName, string results){
@@ -593,17 +590,21 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 	}
 	
 
+	array seen;
+	function resetUnique {
+		.seen = [];
+	}
 	function uniqueRow(array A ) {
-		array keys;
-		array out;
+		array result = [];
 		
-		if ( A.size() == 0 ) return A;		
-		keys = ExportUtilities.getKeys(A[0]);		
-		A =  ExportUtilities.makeUniqueRow(A);
-		out = ExportUtilities.combineDataWithKeys(A,keys);	
-		
-		return out;
-
+		A.each() using ( row ) {
+			string tag = row.join(':');
+			if( not (.seen.keyExists(tag)) ) {
+				.seen[tag] = true;
+				result[] = row;
+			}
+		};
+		return result;
 	}
 
 
@@ -670,7 +671,7 @@ Created by : Kreshano Dutta
 
 
 		
-		self.debug("creating $fileName with status $status",dataForFile);
+		self.debug("creating $fileName with status $status",'');
 	
 		dataForFile and dataForFile[0].each() using( temp )
 		{
@@ -701,17 +702,12 @@ Created by : Kreshano Dutta
 			resultXLS += "</tr>\n";
 		}
 		
-		
-
-		
-	
-		
 		dataForFile.each() using ( tempArray )
 		{
 			resultXLS += "<tr>\n";
 			collumnHeader.each() using ( key ) 
 			{
-				resultXLS += "<td>" + tempArray[key] + "</td>\n";
+				resultXLS += "<td>" + Regexp.replaceAll("\r?\n", EscapeHTML(tempArray[key]), "<br />\r\n") + "</td>\n";
 			};
 			resultXLS += "</tr>\n";	
 		};

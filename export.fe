@@ -13,136 +13,103 @@ uses 'Export.feh';
 uses 'MailUtilities.feh';
 
 
-	function runExports() {
-		
-		array exports;
-		
-		exports = Workflow.Export.listExportRuns();
+function runExports() {
+	
+	array exports = Workflow.Export.listExportRuns();
 
+	if(not exports){
+		Console.println("No scheduled exports found.");
+		return ;
+	}
+	else {
+		Console.println ( "Total available exports to run is " + exports.size() );
+		/* all exports needing to be run */
+		exports.each() using (exportItem) {
+			processExport(exportItem);
+		};
+	}
+}
+
+/*
+
+	this function will process an individual export. 
+	parameter ob is an export object.
+
+*/
+function processExport ( object exportItem ) {
+	array errandsList;
+	array exportFormatFields;
+	number totalErrandForExport,totalErrandForSearch;
+	number should_processed = (webframework.Config.byName('Export.ErrandProcessed')[0].value).toNumber();
+	number noLoop,offset = 0;
+	number exportScriptFlag = 1;
+	number startDate = 0, endDate = 0;
+	string fileName;
+
+	string currentTimeStamp = Date.localDate(Date.GMTnow()).format("-%Y%m%d-%H%M");
+	
+	Export.resetUnique();
+	
+	fileName = exportItem.name + currentTimeStamp;
+	startDate = (exportItem.start <0 ? (Date.GMTnow() + exportItem.start):exportItem.start);
+	endDate = (exportItem.finish <0 ? (Date.GMTnow() + exportItem.finish):exportItem.finish);
+
+	monitor{
+		Console.println("Export: " + exportItem.name + " is processing...");	
 		
+		exportItem.setValue('runningFlag',true);
+		exportItem.save();
 		
-		
-		if(not exports){
-			Console.println("No scheduled exports found.");
-			return ;
+		if(exportItem.exportFormat){
+			exportFormatFields = Export.listExportFormats(exportItem.exportFormat.id);	
+		}		
+			
+		if(exportItem.allerrandsflag){
+			totalErrandForExport = Workflow.Errand.countErrandsWithinIntervalForExport(Export.getSourceAreas(exportItem,exportScriptFlag),startDate,endDate);
+			
+			noLoop = ((totalErrandForExport * 1.00)/ should_processed).ceil();	
+			Console.println("Total errands: " +totalErrandForExport);
+			
+			for(number i=0; ( (i<noLoop) and exportItem.runningFlag) ;i++){
+				offset = i * should_processed ;
+				errandsList = Export.listErrandsByAllErrandsFlag(exportItem,should_processed,offset,exportScriptFlag);
+				Export.processExportData(exportItem,errandsList,exportFormatFields,totalErrandForExport,offset,exportScriptFlag,fileName);
+			}
+		}	
+		else { 	
+
+			array searchPosEmailList = [],searchNegEmailList = [];
+			array searchPosTerms = [], searchNegTerms = [];
+			
+			//Console.println("search flag is on");
+			searchPosEmailList = Export.getParsedData(exportItem.positiveEmailAddList);
+			searchNegEmailList = Export.getParsedData(exportItem.negativeEmailAddList);
+
+			searchPosTerms = Export.getParsedData(exportItem.positivesearchterms);
+			searchNegTerms = Export.getParsedData(exportItem.negativesearchterms);
+
+			totalErrandForSearch = Export.countErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms,should_processed,offset);
+			Console.println("Total errands for search:" + totalErrandForSearch);
+
+			noLoop = ((totalErrandForSearch * 1.00)/ should_processed).ceil();
+			
+			//Console.println("No of errand is: "+totalErrandForSearch);
+			for(number i=0;i<noLoop;i++){
+				offset = i * should_processed ;
+				errandsList = Export.listErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms,should_processed,offset,exportScriptFlag);
+				Export.processExportData(exportItem,errandsList,exportFormatFields,totalErrandForSearch,offset,exportScriptFlag,fileName);
+			}
 		}
 
-		else Console.println ( "Total available exports to run is " + exports.size() );
-		/* all exports needing to be run */
-
-		exports.each() using (exportItem) {
-			
-			processExport(exportItem);
-			
-		};
-	
+		exportItem.setValue('runningFlag',false);
+		exportItem.save();
+		return 1; //positive value means export is processed successfully	
 	}
-
-	/*
-
-		this function will process an individual export. 
-		parameter ob is an export object.
-
-	*/
-	function processExport ( object exportItem ) {
-
-			array errandsList;
-			array exportFormatFields;
-			number totalErrandForExport,totalErrandForSearch;
-			number should_processed = (webframework.Config.byName('Export.ErrandProcessed')[0].value).toNumber();
-			number noLoop,offset = 0;
-			number exportScriptFlag = 1;
-			number startDate = 0, endDate = 0;
-			string fileName;
-
-			string currentTimeStamp = Date.date(Date.GMTnow()).format("%Y%m%d-%I%M");
-			
-			fileName = exportItem.name + currentTimeStamp;
-
-			startDate = (exportItem.start <0 ? (Date.GMTnow() + 
-				exportItem.start):exportItem.start);
-
-			endDate = (exportItem.finish <0 ? (Date.GMTnow() + exportItem.finish):exportItem.finish);
-
-			monitor{
-
-			
-				
-				Console.println("Export:" + exportItem.name + " is processing...");	
-				
-				exportItem.setValue('runningFlag',true);
-				exportItem.save();
-				
-				if(exportItem.exportFormat){
-					exportFormatFields = Export.listExportFormats(exportItem.exportFormat.id);	
-				}		
-					
-				if(exportItem.allerrandsflag){
-					//Console.println("all errand flag is true...");
-					totalErrandForExport = Workflow.Errand.countErrandsWithinIntervalForExport(Export.getSourceAreas(exportItem,exportScriptFlag),startDate,endDate);
-					
-					noLoop = ((totalErrandForExport * 1.00)/ should_processed).ceil();	
-					Console.println("totla errands" +totalErrandForExport);
-					
-						
-					
-					for(number i=0; ( (i<noLoop) and exportItem.runningFlag) ;i++){
-						
-						offset = i * should_processed ;
-						errandsList = Export.listErrandsByAllErrandsFlag(exportItem,should_processed,offset,exportScriptFlag);
-						
-						
-						Export.processExportData(exportItem,errandsList,exportFormatFields,totalErrandForExport,offset,exportScriptFlag,fileName);
-						
-					}
-	
-					
- 				}	
-				else { 	
-
-					array searchPosEmailList = [],searchNegEmailList = [];
-					array searchPosTerms = [], searchNegTerms = [];
-					array finalErrandsList;
-					
-					//Console.println("search flag is on");
-					searchPosEmailList = Export.getParsedData(exportItem.positiveEmailAddList);
-					searchNegEmailList = Export.getParsedData(exportItem.negativeEmailAddList);
-		
-					searchPosTerms = Export.getParsedData(exportItem.positivesearchterms);
-					searchNegTerms = Export.getParsedData(exportItem.negativesearchterms);
-
-					totalErrandForSearch = Export.countErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms,should_processed,offset);
-					Console.println("total errands for search:" + totalErrandForSearch);
-
-					noLoop = ((totalErrandForSearch * 1.00)/ should_processed).ceil();
-					
-					//Console.println("No of errand is: "+totalErrandForSearch);
-
-				
-	
-					for(number i=0;i<noLoop;i++){
-						offset = i * should_processed ;
-						//Console.println(""+finalErrandsList);
-						
-						finalErrandsList =  Export.listErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms,should_processed,offset,exportScriptFlag);					
-						Export.processExportData(exportItem,finalErrandsList,exportFormatFields,totalErrandForSearch,offset,exportScriptFlag,fileName);
-					}
-
-					
-				}
-
-				exportItem.setValue('runningFlag',false);
-				exportItem.save();
-				return 1; //positive value means export is processed successfully	
- 			}
- 			handle{
- 				
- 				Console.println(err.str);
- 				return -1; //negative value means export is unsuccessful.
- 			}
-
-
+	handle{
+		Console.println(err.str);
+		return -1; //negative value means export is unsuccessful.
 	}
+}
 
 
 
