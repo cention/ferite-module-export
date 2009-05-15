@@ -559,7 +559,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 	function saveExports(string fileName, string results){
 		string exportsDirectory = (Config.CachePath - 'Cache/') + 'Exports/';
 		string path = exportsDirectory + fileName;
-		object file = File.open( fileName ,FileSystem.O_RDWR );
+		object file = File.open( path, FileSystem.O_RDWR );
 
 		if ( file ) {
 			self.debug("Appending file $path",1);
