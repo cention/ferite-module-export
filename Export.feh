@@ -547,7 +547,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
  			Console.println("Sending E-mail to export owner... using ${MailUtilities.selectMailServer()}");
  
  			if( not MailUtilities.sendMessage(connection,self.createExportMessage(mail) ) ) {
-				Console.println("Unable to send email.");
+				Console.println("Unable to send email: ${connection._errstr}");
 			}
 		
  			Console.println("Sending internal message to the user...");
@@ -557,38 +557,20 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 	}
 
 	function saveExports(string fileName, string results){
-		string path ;
-
 		string exportsDirectory = (Config.CachePath - 'Cache/') + 'Exports/';
-		object file;
-		fileName = exportsDirectory + fileName;
-		file = File.open( fileName ,FileSystem.O_RDWR );
-
-		
-
-		
-
+		string path = exportsDirectory + fileName;
+		object file = File.open( fileName ,FileSystem.O_RDWR );
 
 		if ( file ) {
-
-				self.debug("creating file $fileName",1);
-				file.seek(0,Stream.SEEK_END);
-				file.write(results);
-				//file.close();
-				
-		}
-		else {
-			Posix.umask( 0 );
-			File.create( fileName , 0777) using ( f ) {
-						
-						self.debug("Creating file $fileName",1);		
-						f.write( results );
-						//f.close();
+			self.debug("Appending file $path",1);
+			file.seek(0,Stream.SEEK_END);
+			file.write(results);
+		} else {
+			File.create(path, 0644) using ( f ) {
+				self.debug("Creating file $path",1);		
+				f.write( results );
 			};
 		}
-
-		
-
 	}
 	
 

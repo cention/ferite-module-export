@@ -46,7 +46,7 @@ function processExport ( object exportItem ) {
 	number startDate = 0, endDate = 0;
 	string fileName;
 
-	string currentTimeStamp = Date.localDate(Date.GMTnow()).format("-%Y%m%d-%H%M");
+	string currentTimeStamp = '_' + Regexp.replaceAll('/', Regexp.replaceAll(' ', formatDateTime(Date.GMTnow()), '_'), '-');
 	
 	Export.resetUnique();
 	
