@@ -94,7 +94,7 @@ function processExport ( object exportItem ) {
 			noLoop = ((totalErrandForSearch * 1.00)/ should_processed).ceil();
 			
 			//Console.println("No of errand is: "+totalErrandForSearch);
-			for(number i=0;i<noLoop;i++){
+			for(number i=0;( (i<noLoop) and exportItem.runningFlag );i++){
 				offset = i * should_processed ;
 				errandsList = Export.listErrandsBySearch(exportItem,searchPosEmailList, searchNegEmailList, searchPosTerms, searchNegTerms,should_processed,offset,exportScriptFlag);
 				Export.processExportData(exportItem,errandsList,exportFormatFields,totalErrandForSearch,offset,exportScriptFlag,fileName);
