@@ -224,12 +224,12 @@ function processExportData(object exportObj, array errandsList,array formatField
 	
 			if(Array.keyExists(formatFields, "errandId") ) {
 	
-				temp[ "errandId" ] = "" + errandItem;
+				temp[ "Errand Id" ] = "" + errandItem;
 			}
 	
 			if(Array.keyExists(formatFields, "fromAddress") ){
 				if(errandObj.mail){
-					temp[ "fromAddress" ] = "" + errandObj.mail.from.emailAddress;
+					temp[ "From" ] = "" + errandObj.mail.from.emailAddress;
 				}
 			}
 				
@@ -238,62 +238,62 @@ function processExportData(object exportObj, array errandsList,array formatField
 				errandObj.mail.to.each() using (value){
 					receiverList[ ] = value.emailAddress;
 				};
-				temp[ "toAddress" ] = receiverList.join(',');
+				temp[ "To" ] = receiverList.join(',');
 			}
 				
 			if(Array.keyExists(formatFields, "subject") ){
 	
-				temp[ "subject" ] = "" + errandObj.message.subject;
+				temp[ "Subject" ] = "" + errandObj.message.subject;
 			}
 			
 			if(Array.keyExists(formatFields, "question") ) {
 	
-				temp[ "question" ] = "" + errandObj.message.body;
+				temp[ "Question" ] = "" + errandObj.message.body;
 			}
 	
 			if(Array.keyExists(formatFields, "answer") ) {
 	
-				temp[ "answer" ] = "" +(errandObj.answer ? (errandObj.answer.message?errandObj.answer.message.body:"") : "-");
+				temp[ "Answer" ] = "" +(errandObj.answer ? (errandObj.answer.message?errandObj.answer.message.body:"-") : "-");
 	
 			}
 			
 			if(Array.keyExists(formatFields, "arrived") ) {
 	
-				temp[ "arrived" ] = formatDateTime(errandObj.timestampArrive) ;
+				temp[ "Arrived" ] = formatDateTime(errandObj.timestampArrive) ;
 			}	
 			
 			if(Array.keyExists(formatFields, "opened") ) {
 	
-				temp[ "opened" ]= (errandObj.timestampOpen > 0 ?formatDateTime(errandObj.timestampOpen):"-") ;
+				temp[ "Opened" ]= (errandObj.timestampOpen > 0 ?formatDateTime(errandObj.timestampOpen):"-") ;
 			}
 	
 			if(Array.keyExists(formatFields, "answered") ) {
 	
-				temp[ "answered" ] = (errandObj.timestampLastAnswered>0? formatDateTime(errandObj.timestampLastAnswered):"-") ;
+				temp[ "Answered" ] = (errandObj.timestampLastAnswered>0? formatDateTime(errandObj.timestampLastAnswered):"-") ;
 			}
 	
 			if(Array.keyExists(formatFields, "closed") ) {
 	
-				temp[ "closed" ] = (errandObj.timestampClosed >0?formatDateTime(errandObj.timestampClosed):"-");
+				temp[ "Closed" ] = (errandObj.timestampClosed >0?formatDateTime(errandObj.timestampClosed):"-");
 			}
 	
 			if(Array.keyExists(formatFields, "agentid") ) {
 	
-				temp[ "agentid" ] = (errandObj.owner?errandObj.owner.id: 0);
+				temp[ "Agent Id" ] = (errandObj.owner?errandObj.owner.id: 0);
 			
 			}
 	
 			if(Array.keyExists(formatFields, "agentname") ) {
 	
-				temp[ "agentname" ] =  (errandObj.owner?errandObj.owner.username: "-");
+				temp[ "Agent name" ] =  (errandObj.owner?errandObj.owner.username: "-");
 			}
 		
 			if(Array.keyExists(formatFields, "areaid") ) {
-				temp[ "areaid" ] = "" + errandObj.targetArea.id;
+				temp[ "Area Id" ] = "" + errandObj.targetArea.id;
 			}
 			
 			if(Array.keyExists(formatFields, "areaname") ) {
-				temp[ "areaname" ] = errandObj.targetArea.name;
+				temp[ "Area name" ] = errandObj.targetArea.name;
 			}
 				
 			if(Array.keyExists(formatFields, "tags") ){
@@ -301,17 +301,17 @@ function processExportData(object exportObj, array errandsList,array formatField
 				errandObj.tags.each() using (value){
 					tagList[] = value.display;
 				};
-				temp[ "tags" ] = tagList.join(',');
+				temp[ "Tags" ] = tagList.join(',');
 			}
 	
 			if(Array.keyExists(formatFields, "clientid") ){
 	
-				temp[ "clientid" ] = "" + errandObj.client.id;
+				temp[ "Client Id" ] = "" + errandObj.client.id;
 			}
 	
 			if(Array.keyExists(formatFields, "priority") ) {
 				
-				temp[ "priority" ] = "" + (errandObj.priority?errandObj.priority.name : "-"); 
+				temp[ "Priority" ] = "" + (errandObj.priority?errandObj.priority.name : "-"); 
 			}	
 				
 			exportErrands[] = temp;
