@@ -3,7 +3,7 @@ namespace Export {
 
 /* function getSourceAreas() gets the source errand areas IDs for export */
 
-string timeStampFormat = "%Y/%m/%d-%H:%M";
+
 
 function getSourceAreas (object exportAreas, number exportFlag){
 		array idAreas = [];
@@ -26,7 +26,7 @@ function getSourceAreas (object exportAreas, number exportFlag){
 
  function getParsedData(string list){
 
-		array searchData;
+		array searchData = [];
 
 		if( list.length() )
 			searchData = Regexp.split( "," , list );
@@ -341,13 +341,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 				}				
 	}
 
-	//Console.println("Progress is: "+progress);
-
-// 	if( exportFlag ){
-// 		
-// 		
-// 		self.saveExportsInfo(exportObj, exportInfo,  exportErrands);
-// 	}
+	
 	return exportErrands;
 }
 
@@ -355,7 +349,8 @@ function processExportData(object exportObj, array errandsList,array formatField
 function saveExportsInfo( object exportObj,object exportInfo, array exportErrands, string status,string fileName){
 		
 		
-		string currentTimeStamp = self.getTimestamp();		
+		string currentTimeStamp = self.getTimestamp();	
+	
 		if(exportObj.type == 0 ){ // export to excel
 		
 			fileName = fileName + ".xls";			
