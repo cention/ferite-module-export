@@ -315,7 +315,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 			}	
 				
 			exportErrands[] = temp;
-			temp[] = "";
+			temp = [];
 	
 			
 	};
