@@ -606,7 +606,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 			}
 		};
 
-		self.resetUnique();
+		//self.resetUnique();
 		
 
 		return result;
@@ -672,7 +672,7 @@ Created by : Kreshano Dutta
 		string currentTimeStamp = self.getTimestamp();
 		number count = 0;		
 		
-		dataForFile = self.uniqueRow(dataForFile);	
+			
 		dataForFile and dataForFile[0].each() using( temp )
 		{
 			collumnHeader[] = Array.getName(dataForFile[0],count);
