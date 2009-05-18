@@ -1,9 +1,12 @@
+uses "console";
 uses "ExportUtilities.fe";
 namespace Export {
 
 /* function getSourceAreas() gets the source errand areas IDs for export */
 
+array uniqueRows;//This array holds exports which is generated processing a fixed number of errands each time. This list itself may hold duplicate entries. So, It needs further duplicate removal.
 
+string timeStampFormat = "%Y/%m/%d-%H:%M";
 
 function getSourceAreas (object exportAreas, number exportFlag){
 		array idAreas = [];
@@ -349,26 +352,40 @@ function processExportData(object exportObj, array errandsList,array formatField
 function saveExportsInfo( object exportObj,object exportInfo, array exportErrands, string status,string fileName){
 		
 		
-		string currentTimeStamp = self.getTimestamp();	
-	
+		string currentTimeStamp = self.getTimestamp();		
+
+		
 		if(exportObj.type == 0 ){ // export to excel
 		
-			fileName = fileName + ".xls";			
-			self.generateXLS(exportErrands,exportObj,status,fileName);
+			
+			self.uniqueRows = Array.append(self.uniqueRows,self.uniqueRow(exportErrands));
+			if ( "complete" == status or "end" == status) {		
+				fileName = fileName + ".xls";			
+				self.generateXLS(self.uniqueRows,exportObj,"complete",fileName);
+				
+			}			
 		}
 		else if(exportObj.type == 1 ){ // export to csv
 
-			fileName = fileName + ".csv";
-			self.generateCSV(exportErrands,exportObj,status,fileName);
+			self.uniqueRows = Array.append(self.uniqueRows,self.uniqueRow(exportErrands));
+			if ( "complete" == status or "end" == status) {		
+				fileName = fileName + ".csv";
+				self.generateCSV(exportErrands,exportObj,"complete",fileName);
+			}			
+			
 		}
 		else if(exportObj.type == 2 ){ // export to xml
 
-			fileName = fileName + ".xml";
-			self.generateXML(exportErrands,exportObj,status,fileName);
+			self.uniqueRows = Array.append(self.uniqueRows,self.uniqueRow(exportErrands));
+			if ( "complete" == status or "end" == status ) {		
+				fileName = fileName + ".xml";
+				self.generateXML(exportErrands,exportObj,"complete",fileName);
+			}			
+			
 		}
 		
 
-		if ( "end" == status ) {
+		if ( "complete" == status or "end" == status ) {
 			exportInfo.setValue('filename',fileName);
 			exportInfo.setValue('finish', Date.now());
 			exportInfo.save();		
@@ -557,12 +574,12 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		object file = File.open( path, FileSystem.O_RDWR );
 
 		if ( file ) {
-			self.debug("Appending file $path",1);
+			
 			file.seek(0,Stream.SEEK_END);
 			file.write(results);
 		} else {
 			File.create(path, 0644) using ( f ) {
-				self.debug("Creating file $path",1);		
+				
 				f.write( results );
 			};
 		}
@@ -574,7 +591,12 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		.seen = [];
 	}
 	function uniqueRow(array A ) {
+
+
+	
 		array result = [];
+
+		
 		
 		A.each() using ( row ) {
 			string tag = row.join(':');
@@ -583,6 +605,10 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 				result[] = row;
 			}
 		};
+
+		self.resetUnique();
+		
+
 		return result;
 	}
 
@@ -645,13 +671,8 @@ Created by : Kreshano Dutta
 		array collumnHeader;
 		string currentTimeStamp = self.getTimestamp();
 		number count = 0;		
-
-		dataForFile = self.uniqueRow(dataForFile);
-
-
 		
-		self.debug("creating $fileName with status $status",'');
-	
+		dataForFile = self.uniqueRow(dataForFile);	
 		dataForFile and dataForFile[0].each() using( temp )
 		{
 			collumnHeader[] = Array.getName(dataForFile[0],count);
@@ -753,3 +774,4 @@ Created by : Kreshano Dutta
 	}
 	
 }
+
