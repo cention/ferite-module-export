@@ -262,7 +262,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 	
 			if(Array.keyExists(formatFields, "agentid") ) {
 	
-				temp[ "Agent Id" ] = (errandObj.owner?errandObj.owner.id: 0);
+				temp[ "Agent Id" ] = "" +(errandObj.owner?errandObj.owner.id: 0);
 			
 			}
 	
