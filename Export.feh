@@ -6,7 +6,7 @@ namespace Export {
 
 array uniqueRows;//This array holds exports which is generated processing a fixed number of errands each time. This list itself may hold duplicate entries. So, It needs further duplicate removal.
 
-string timeStampFormat = "%Y/%m/%d-%H:%M";
+
 
 function getSourceAreas (object exportAreas, number exportFlag){
 		array idAreas = [];
@@ -54,21 +54,14 @@ function listErrandsByAllErrandsFlag(object exportObj, number limit, number offs
 	startDate = (exportObj.start <0 ? (Date.GMTnow() + exportObj.start):exportObj.start);
 	endDate = (exportObj.finish <0 ? (Date.GMTnow() + exportObj.finish):exportObj.finish);
 	
-		if(exportFlag == 0){
-			Workflow.Errand.listLimitedErrandsWithinIntervalForExport(self.getSourceAreas(exportObj,exportFlag),startDate,endDate).each() using (errandItem)	{
-				errandsList[] = errandItem.id;
 		
-			};
-
-		}
-		else if (exportFlag == 1){
 
 			Workflow.Errand.listErrandsWithinIntervalForExportWithLimit(self.getSourceAreas(exportObj,exportFlag),startDate,endDate,limit,offset).each() using (errandItem)	{
 				errandsList[] = errandItem.id;
 		
 			};
 
-		}
+		
 		if(not errandsList) {
 			if(exportFlag)
 				Console.println("No errands found in the time interval for this export.");
@@ -76,7 +69,7 @@ function listErrandsByAllErrandsFlag(object exportObj, number limit, number offs
 			
 		}
 	
-	//Console.println(""+errandsList);
+
 	return errandsList;
 
 }
@@ -159,25 +152,12 @@ function listErrandsBySearch(object exportObj, array p_email_list, array n_email
 	negative = negative_list_email.append(negative_list_body);
 	
 	
-// We can now do the queries over the errands that match
 
-	if(searchFlag == 0){
-	
-
-		Workflow.Errand.listErrandsForExportPreview(exportAreas,startDate,endDate,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0])).each() using( list ){
-
-			errandsList[] = list.id;
-		};
-
-	}
-
-
-	else {
 		Workflow.Errand.listErrandsForExportScriptWithLimit(exportAreas,startDate,endDate,(positive ? 1 : 0), (positive ? positive : [0]), (negative ? 1 : 0), (negative ? negative : [0]),limit,offset).each() using( list ){
 
 			errandsList[] = list.id;
 		};
-	}
+	
 
 	return errandsList;
 
