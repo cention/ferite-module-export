@@ -211,27 +211,28 @@ function processExportData(object exportObj, array errandsList,array formatField
 			}
 	
 			if(Array.keyExists(formatFields, "fromAddress") ){
-				temp[ "From" ] = "" + (errandObj.mail and errandObj.mail.from ? errandObj.mail.from.emailAddress : "-");
+				temp[ "From" ] = "" + (errandObj.mail and errandObj.mail.from and errandObj.mail.from.emailAddress ? errandObj.mail.from.emailAddress : "-");
 			}
 				
 			if(Array.keyExists(formatFields, "toAddress") ){
-				array receiverList;
-				if(errandObj.mail){
+				temp[ "To" ] = "-";
+				if(errandObj.mail and errandObj.mail.to){
+					array receiverList;
 					errandObj.mail.to.each() using (value){
 						receiverList[ ] = value.emailAddress;
 					};
+					temp[ "To" ] = receiverList.join(',');
 				}
-				temp[ "To" ] = receiverList.join(',');
 			}
 				
 			if(Array.keyExists(formatFields, "subject") ){
 	
-				temp[ "Subject" ] = "" + (errandObj.message ? errandObj.message.subject : "-");
+				temp[ "Subject" ] = "" + (errandObj.message and errandObj.message.subject ? errandObj.message.subject : "-");
 			}
 			
 			if(Array.keyExists(formatFields, "question") ) {
 	
-				temp[ "Question" ] = "" + (errandObj.message ? errandObj.message.body : "-");
+				temp[ "Question" ] = "" + (errandObj.message and errandObj.message.body ? errandObj.message.body : "-");
 			}
 	
 			if(Array.keyExists(formatFields, "answer") ) {
@@ -280,11 +281,14 @@ function processExportData(object exportObj, array errandsList,array formatField
 			}
 				
 			if(Array.keyExists(formatFields, "tags") ){
-				array tagList;
-				errandObj.tags.each() using (value){
-					tagList[] = value.display;
-				};
-				temp[ "Tags" ] = tagList.join(',');
+				temp[ "Tags" ] = "-";
+				if(errandObj.tags){
+					array tagList;
+					errandObj.tags.each() using (value){
+						tagList[] = value.display;
+					};
+					temp[ "Tags" ] = tagList.join(',');
+				}
 			}
 	
 			if(Array.keyExists(formatFields, "clientid") ){
@@ -451,7 +455,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		sentMessage.setValue( 'timestampSent', Date.GMTnow() );
 		sentMessage.setValue( 'message', simpleMessage );
 		sentMessage.setValue( 'folder', Workflow.InternalFolder.fetch(Workflow.InternalFolder.SENT) );
-		sentMessage.setValue( 'origin', objSender );
+		sentMessage.setValue( 'origin', exportOwnerUserObj );
 		sentMessage.save();
 		
 		inboxMessage.setValue( 'type', Workflow.InternalMessageType.create( 'Urgent' ) );
@@ -499,15 +503,9 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		else {
 		
 			Console.println("Sending export from $addrFrom to $addrToSend");
- 			objMailSender =  new Workflow.MailOrigin();
- 			ObjMailReceiver = new Workflow.MailOrigin();
+ 			objMailSender =  Workflow.MailOrigin.createByAddress(addrToSend);
+ 			ObjMailReceiver = Workflow.MailOrigin.createByAddress(addrFrom);
 		
- 			objMailSender.setValue( 'emailAddress', addrToSend );
- 			objMailSender.save();
- 		
-			ObjMailReceiver.setValue( 'emailAddress', addrFrom );
- 			ObjMailReceiver.save();
-
  			mail = new Workflow.Mail();
  
  			mail.setValue( 'to', [objMailSender] );
@@ -549,8 +547,12 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 	function saveExports(string fileName, string results){
 		string exportsDirectory = (Config.CachePath - 'Cache/') + 'Exports/';
 		string path = exportsDirectory + fileName;
-		object file = File.open( path, FileSystem.O_RDWR );
-
+		object file;
+		
+		Directory.build( exportsDirectory );
+		
+		file = File.open( path, FileSystem.O_RDWR );
+		
 		if ( file ) {
 			
 			file.seek(0,Stream.SEEK_END);
