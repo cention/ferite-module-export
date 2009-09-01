@@ -211,27 +211,27 @@ function processExportData(object exportObj, array errandsList,array formatField
 			}
 	
 			if(Array.keyExists(formatFields, "fromAddress") ){
-				if(errandObj.mail){
-					temp[ "From" ] = "" + errandObj.mail.from.emailAddress;
-				}
+				temp[ "From" ] = "" + (errandObj.mail and errandObj.mail.from ? errandObj.mail.from.emailAddress : "-");
 			}
 				
 			if(Array.keyExists(formatFields, "toAddress") ){
 				array receiverList;
-				errandObj.mail.to.each() using (value){
-					receiverList[ ] = value.emailAddress;
-				};
+				if(errandObj.mail){
+					errandObj.mail.to.each() using (value){
+						receiverList[ ] = value.emailAddress;
+					};
+				}
 				temp[ "To" ] = receiverList.join(',');
 			}
 				
 			if(Array.keyExists(formatFields, "subject") ){
 	
-				temp[ "Subject" ] = "" + errandObj.message.subject;
+				temp[ "Subject" ] = "" + (errandObj.message ? errandObj.message.subject : "-");
 			}
 			
 			if(Array.keyExists(formatFields, "question") ) {
 	
-				temp[ "Question" ] = "" + errandObj.message.body;
+				temp[ "Question" ] = "" + (errandObj.message ? errandObj.message.body : "-");
 			}
 	
 			if(Array.keyExists(formatFields, "answer") ) {
@@ -262,7 +262,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 	
 			if(Array.keyExists(formatFields, "agentid") ) {
 	
-				temp[ "Agent Id" ] = "" +(errandObj.owner?errandObj.owner.id: 0);
+				temp[ "Agent Id" ] = "" +(errandObj.owner?errandObj.owner.id: "-");
 			
 			}
 	
@@ -272,11 +272,11 @@ function processExportData(object exportObj, array errandsList,array formatField
 			}
 		
 			if(Array.keyExists(formatFields, "areaid") ) {
-				temp[ "Area Id" ] = "" + errandObj.targetArea.id;
+				temp[ "Area Id" ] = "" + (errandObj.targetArea ? errandObj.targetArea.id : "-");
 			}
 			
 			if(Array.keyExists(formatFields, "areaname") ) {
-				temp[ "Area name" ] = errandObj.targetArea.name;
+				temp[ "Area name" ] = (errandObj.targetArea ? errandObj.targetArea.name : "-");
 			}
 				
 			if(Array.keyExists(formatFields, "tags") ){
@@ -289,7 +289,7 @@ function processExportData(object exportObj, array errandsList,array formatField
 	
 			if(Array.keyExists(formatFields, "clientid") ){
 	
-				temp[ "Client Id" ] = "" + errandObj.client.id;
+				temp[ "Client Id" ] = "" + (errandObj.client ? errandObj.client.id : "-");
 			}
 	
 			if(Array.keyExists(formatFields, "priority") ) {
@@ -432,7 +432,6 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 
 	function sendInternalMsg(object exportObj){
 
-		object objSender; 
 		object simpleMessage = new Workflow.SimpleMessage();
 		object inboxMessage = new Workflow.InternalMessage();
 		object sentMessage = new Workflow.InternalMessage();
@@ -442,7 +441,6 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 
 		
 		exportOwnerUserObj = Workflow.User.load(exportObj.createdby.id);
-		objSender = Workflow.User.fetchUserObject(exportObj.createdby.id);
 
 		simpleMessage.setValue( 'subject', "Cention Exports" );
 		simpleMessage.setValue( 'body', "Export is finished." );
@@ -461,7 +459,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 		inboxMessage.setValue( 'message', simpleMessage );
 		inboxMessage.setValue( 'folder', Workflow.InternalFolder.fetch(Workflow.InternalFolder.INBOX));
 		inboxMessage.setValue( 'targets', [exportOwnerUserObj]);
-		inboxMessage.setValue( 'origin', objSender );
+		inboxMessage.setValue( 'origin', exportOwnerUserObj );
 		inboxMessage.save();
 
 
