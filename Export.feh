@@ -354,7 +354,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 			self.uniqueRows = Array.append(self.uniqueRows,self.uniqueRow(exportErrands));
 			if ( "complete" == status or "end" == status) {		
 				fileName = fileName + ".csv";
-				self.generateCSV(exportErrands,exportObj,"complete",fileName);
+				self.generateCSV(self.uniqueRows,exportObj,"complete",fileName);
 			}			
 			
 		}
@@ -363,7 +363,7 @@ function saveExportsInfo( object exportObj,object exportInfo, array exportErrand
 			self.uniqueRows = Array.append(self.uniqueRows,self.uniqueRow(exportErrands));
 			if ( "complete" == status or "end" == status ) {		
 				fileName = fileName + ".xml";
-				self.generateXML(exportErrands,exportObj,"complete",fileName);
+				self.generateXML(self.uniqueRows,exportObj,"complete",fileName);
 			}			
 			
 		}
@@ -605,9 +605,7 @@ Created by : Kreshano Dutta
 		object fileWriteObject;
 		boolean flag;
 		number count = 0;	
-
-		dataForFile = self.uniqueRow(dataForFile);
-
+		
 		dataForFile and dataForFile[0].each() using( temp )
 		{
 			collumnHeader[] = Array.getName(dataForFile[0],count);
@@ -652,7 +650,6 @@ Created by : Kreshano Dutta
 		string currentTimeStamp = self.getTimestamp();
 		number count = 0;		
 		
-			
 		dataForFile and dataForFile[0].each() using( temp )
 		{
 			collumnHeader[] = Array.getName(dataForFile[0],count);
@@ -698,6 +695,7 @@ Created by : Kreshano Dutta
 			resultXLS +=  "</html>";	
 			
 		}
+		
 		//fileName = export.name + currentTimeStamp + ".xls";
 		self.saveExports(fileName, resultXLS );
 		return fileName;
@@ -716,9 +714,6 @@ Created by : Kreshano Dutta
 		object fileWriteObject;
  		string currentTimeStamp = self.getTimestamp();	
 		number count = 0;
-
-		
-		dataForFile = self.uniqueRow(dataForFile);
 		
 		dataForFile and dataForFile[0].each() using( temp )
 		{
@@ -726,7 +721,7 @@ Created by : Kreshano Dutta
 			count++;
 		};
 
-		if ( "start" == status ) {
+		if ( "start" == status || "complete" == status ) {
 			resultXML += "<root>";
 			resultXML += "\n";
 		}
@@ -744,11 +739,11 @@ Created by : Kreshano Dutta
 			resultXML += "\n";
 		};
 	
-		if ( "end" == status ) {
+		if ( "end" == status || "complete" == status ) {
 			resultXML += "</root>";
 			resultXML += "\n";
 		}
-
+		
 		self.saveExports(fileName, resultXML );
 		return fileName;
 	}
