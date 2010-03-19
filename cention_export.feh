@@ -2,11 +2,13 @@ uses "/cention/etc/webframework-config.feh";
 uses "webframework/webframework";
 uses "workflow";
 uses "MailUtilities";
+uses "cmail";
 
 /*
  * TODO:
- *   Generate SQL to fetch the data from the database
+ *   Generate SQL to fetch the data from the database - mostly done just need to implement email and word list checks
  *   Implement disk space unique row checking - this will probably have to be some sort of disk-base btree structure 
+ *   Update status and progress.
  */
 
 global {
@@ -33,7 +35,7 @@ function log( object export, string text ) {
 		if( not logFileObject ) {
 			if( not Posix.stat(logFile) ) {
 				Posix.umask(0);
-				logFileObject = File.create( logFile, 0777);
+				logFileObject = File.create( logFile, 0644);
 				logFileObject = File.open( logFile, FileSystem.O_RDWR );
 				if( logFileObject ) { 
 				}
@@ -67,7 +69,7 @@ namespace Exports {
 	function createMessage( object export, array exportedFiles ) {
 		object message = null;
 		
-		if( export.emailFlag ) {
+		if( export.emailflag ) {
 			string body;
 
 			object content = new Mail.MessageMultiPart();
@@ -81,7 +83,7 @@ namespace Exports {
 			message.header.subject = I('Export {0:name} Completed').expand(export.name);
 			message.header.date = Date.localDate(Date.GMTnow()).format( '%a, %d %b %Y %H:%M:%S %z' );
 
-			message = MailUtilities.setOutgoingHeader(message,mail.from.emailAddress);
+			message = MailUtilities.setOutgoingHeader(message,export.optionalAddress);
 
 			body = I('Your export {0:name} has completed. Please find the export within the attached file(s).').expand(export.name);
 			body = Regexp.replaceAll("\r\n", body, "\n");
@@ -116,10 +118,15 @@ namespace Exports {
 		string subject;
 		string question;
 		string answer;
-		number timestamp_arrived;
-		number timestamp_opened;
-		number timestamp_answered;
-		number timestamp_closed;
+
+		string original_subject;
+		string original_question;
+		string original_answer;
+
+		string timestamp_arrived;
+		string timestamp_opened;
+		string timestamp_answered;
+		string timestamp_closed;
 		number agent_id;
 		string agent_name;
 		number area_id;
@@ -127,6 +134,12 @@ namespace Exports {
 		number client_id;
 		string priority;
 		string tag_names;
+
+		number _internal_timestamp_arrived;
+		number _internal_timestamp_opened;
+		number _internal_timestamp_answered;
+		number _internal_timestamp_closed;
+
 		
 		function toArray( object format ) {
 			array values = [];
@@ -134,13 +147,13 @@ namespace Exports {
 			if( format.errandId ) values['errand_id'] = .errand_id;
 			if( format.fromAddress ) values['from_address'] = .from_address;
 			if( format.toAddress ) values['to_address'] = .to_address;
-			if( format.subject ) values['subject'] = .subject;
-			if( format.question ) values['question'] = .question;
-			if( format.answer ) values['answer'] = .answer;
-			if( format.arrived ) values['timestamp_arrived'] = formatDateTime(.timestamp_arrived);
-			if( format.opened ) values['timestamp_opened'] = formatDateTime(.timestamp_opened);
-			if( format.answered ) values['timestamp_answered'] = formatDateTime(.timestamp_answered);
-			if( format.closed ) values['timestamp_closed'] = formatDateTime(.timestamp_closed);
+			if( format.subject ) values['subject'] = (.subject ? .subject : .original_subject);
+			if( format.question ) values['question'] = (.question ? .question : .original_question);
+			if( format.answer ) values['answer'] = (.answer ? .answer : .original_answer);
+			if( format.arrived ) values['timestamp_arrived'] = (._internal_timestamp_arrived ? formatDateTime(._internal_timestamp_arrived) : .timestamp_arrived);
+			if( format.opened ) values['timestamp_opened'] = (._internal_timestamp_opened ? formatDateTime(._internal_timestamp_opened) : .timestamp_opened);
+			if( format.answered ) values['timestamp_answered'] = (._internal_timestamp_answered ? formatDateTime(._internal_timestamp_answered) : .timestamp_answered);
+			if( format.closed ) values['timestamp_closed'] = (._internal_timestamp_closed ? formatDateTime(._internal_timestamp_closed) : .timestamp_closed);
 			if( format.agentid ) values['agent_id'] = .agent_id;
 			if( format.agentname ) values['agent_name'] = .agent_name;
 			if( format.areaid ) values['area_id'] = .area_id;
@@ -153,12 +166,13 @@ namespace Exports {
 		}
 		function toJSONForFormat( object format ) {
 			array objectValues = [];
-			.toArray(format).eachWithIndex() using ( _value, index ) {
+			array values = .toArray(format);
+			values.eachWithIndex() using ( _value, index ) {
 				string key = JSON.escape(values.getName(index));
-				string value = .valueToJSON(_value);
+				string value = JSON.valueToJSON(_value);
 				objectValues[] = "\"$key\":$value";
 			};
-			return "{" + objectValues.join(';') + "}";
+			return "{" + objectValues.join(',') + "}";
 		}
 	}
 
@@ -194,8 +208,9 @@ namespace Exports {
 			return Date.localDate(localDate).format('%Y%m%d');
 		}
 		function setupPathForExport {
-			Directory.build(Exports.exportPath + .export.name);
-			return Exports.exportPath + .export.name;
+			string path = Exports.exportPath + Regexp.replaceAll(' ', .export.name, '-');
+			Directory.build(path);
+			return path;
 		}
 		function filenameStub {
 			return .setupPathForExport() + "/${Regexp.replaceAll(' ', .export.name, '-')}_${.formatDate(.export.start)}_to_${.formatDate(.export.finish)}";
@@ -212,7 +227,7 @@ namespace Exports {
 			log( .export, "Starting export writing intermediate data to $path");
 		}
 		function hasSeenHash( string _hash ) {
-			string hash = ":$hash;";
+			string hash = ":$_hash;";
 			if( .useMemoryHashCache ) {
 				if( .memoryHashCache.keyExists(hash) ) {
 					return true;
@@ -222,43 +237,53 @@ namespace Exports {
 					raise new Error("Hard memory hash limit hit - implement file based lookup of uniqueness");
 				}
 				return false;
+			} else {
+				raise new Error("Implement file based lookup of uniqueness");
 			}
 		}
 		function record( object row ) {
 			string json = row.toJSONForFormat(.export.exportFormat);
-			string md5 = MHash.hashString(json, MHash.SHA256);
+			string md5 = String.base64encode(MHash.hashString(json, MHash.SHA256));
 			
 			if( not .hasSeenHash(md5) ) {
 				.outputStream.writeln(json);
 				.outputStream.flush();
 				.recordedCount++;
-				if( .recordedCount % 1000 ) {
+				if( (.recordedCount % 1000) == 0 ) {
 					log( .export, "Recorded a total of ${.recordedCount} rows.");
 				}
 			} else {
 				.duplicateCount++;
-				if( .duplicateCount % 1000 ) {
+				if( (.duplicateCount % 1000) == 0 ) {
 					log( .export, "Ignored a total of ${.duplicateCount} rows.");
 				}
 			}
 		}
 		function iterateIntermediateFile {
-			return .iterateIntermediateFile(true);
+			return .iterateIntermediateFile(true) using recipient();
 		}
-		function iterateIntermediateFile( boolean compelex ) {
+		function iterateIntermediateFile( boolean complex, object continuance ) {
 			string path = .filenameStub() + ".intermediate.json";
-			object stream = File.open(path);
+			object stream = (continuance ? continuance : File.open(path));
 			object handler = new Exports.ExportResult();
 			
 			while( not stream.eos() ) {
 				string line = stream.readln().trim(" \r\n");
 				if( complex ) {
-					handler = JSON.parse(line, handler);
-					deliver(handler);
+					if( line ) {
+						handler = JSON.parse(line, handler);
+						if( deliver(handler) ) {
+							break;
+						}
+					}
 				} else {
-					deliver(line);
+					if( deliver(line) ) {
+						break;
+					}
 				}
 			}
+			
+			return stream;
 		}
 		function finishFiles {
 			return  [ "- NO FILE TO FINISH -" ];
@@ -276,7 +301,7 @@ namespace Exports {
 		function finishFiles {
 			number totalLeft = .recordedCount;
 			
-			if( totalLeft < tippingPoint ) {
+			if( totalLeft < .tippingPoint ) {
 				return [ .filenameStub() + ".xls" ];
 			} else {
 				array list = [];
@@ -286,6 +311,68 @@ namespace Exports {
 				}
 				return list;
 			}
+		}
+		
+		function finish {
+			object output = null;
+			array paths = .finishFiles();
+			boolean writtenHeader = false;
+			array header = [];
+			object stream = null;
+			
+			super.finish();
+
+			paths.each() using ( path ) {
+				number count = 0;
+				
+				File.remove(path);
+				output = File.create( path, 0644);
+				output = File.open( path, FileSystem.O_RDWR );
+				output.writeln("<html>");
+				output.writeln("<body>");
+				output.writeln("<table>");
+
+				stream = .iterateIntermediateFile( true, stream ) using ( row ) {
+					array values = row.toArray(.export.exportFormat);
+					array xml_tags = [];
+
+					values.eachWithIndex() using ( value, index ) {
+						if( not writtenHeader ) {
+							header[] = values.getName(index);
+						}
+						if( value isa string ) {
+							xml_tags[] = "\t\t<td>${EscapeHTML(value)}</td>";
+						} else {
+							xml_tags[] = "\t\t<td>$value</td>";
+						}
+					};
+				
+					if( not writtenHeader ) {
+						output.writeln("\t<tr>");
+						output.writeln(header.join("\n") using ( key ) {
+							return "<td>$key</td>";
+						});
+						output.writeln("\t</tr>");
+						writtenHeader = true;
+					}
+
+					output.writeln("\t<tr>");
+					output.writeln(xml_tags.join("\n"));
+					output.writeln("\t</tr>");
+					
+					count++;
+					if( count >= .tippingPoint ) {
+						count = 0;
+						return true;
+					}
+				};
+
+				output.writeln("</table>");
+				output.writeln("</body>");
+				output.writeln("</html>");
+				output.flush();
+				output.close();
+			};
 		}
 	}
 	class CSVDataWriter extends DataWriter { 
@@ -298,7 +385,7 @@ namespace Exports {
 			super.finish();
 			
 			File.remove(path);
-			output = File.create( path, 0777);
+			output = File.create( path, 0644);
 			output = File.open( path, FileSystem.O_RDWR );
 
 			.iterateIntermediateFile() using ( row ) {
@@ -329,7 +416,7 @@ namespace Exports {
 			super.finish();
 
 			File.remove(path);
-			output = File.create( path, 0777);
+			output = File.create( path, 0644);
 			output = File.open( path, FileSystem.O_RDWR );
 			output.writeln("<?xml version=\"1.0\" ?>");
 			output.writeln("<export>");
@@ -360,13 +447,13 @@ namespace Exports {
 			return  [ .filenameStub() + ".json" ];
 		function finish {
 			object output = null;
-			string path = .filenameStub() + '.csv';
+			string path = .filenameStub() + '.json';
 			string pendingComma = '';
 
 			super.finish();
 
 			File.remove(path);
-			output = File.create( path, 0777);
+			output = File.create( path, 0644);
 			output = File.open( path, FileSystem.O_RDWR );
 			output.writeln("[");
 
@@ -391,12 +478,14 @@ namespace modifies Workflow {
 			string sql = query;
 			sql = Regexp.replaceAll('{limit}', sql, "$limit");
 			sql = Regexp.replaceAll('{offset}', sql, "$offset");
-			
-			log(self, "Running query: $sql");
-			
+			if( Config.Debug ) {
+				log(self, "Running query: $sql");
+			}
 			return ObjRunObject.invoke('ObjectServer.query.rawSQL', [ 'sql' => sql ], new JSON.ArrayHandler(Exports.ExportResult));
 		}
 		function generateSQL {
+			object deleted_tag = Workflow.Tag.fetch(Workflow.Errand.TAG_DELETED);
+			
 			object format = self.exportFormat;
 			
 			array selectClause = [];
@@ -406,10 +495,10 @@ namespace modifies Workflow {
 			
 			// workflow_errands
 			if( format.errandId ) selectClause[] = "errand.workflow_errand_id AS errand_id";
-			if( format.arrived )  selectClause[] = "errand.timestampArrive AS timestamp_arrived";
-			if( format.opened )   selectClause[] = "errand.timestampOpen AS timestamp_opened";
-			if( format.answered ) selectClause[] = "errand.timestampLastAnswered AS timestamp_answered";
-			if( format.closed )   selectClause[] = "errand.timestampClosed AS timestamp_closed";
+			if( format.arrived )  selectClause[] = "errand.timestampArrive AS _internal_timestamp_arrived";
+			if( format.opened )   selectClause[] = "errand.timestampOpen AS _internal_timestamp_opened";
+			if( format.answered ) selectClause[] = "errand.timestampLastAnswered AS _internal_timestamp_answered";
+			if( format.closed )   selectClause[] = "errand.timestampClosed AS _internal_timestamp_closed";
 			if( format.agentid )  selectClause[] = "errand.owner_fkey AS agent_id";
 			if( format.areaid )   selectClause[] = "errand.targetArea_fkey AS area_id";
 			if( format.clientid ) selectClause[] = "errand.client_fkey AS client_id";
@@ -425,9 +514,11 @@ namespace modifies Workflow {
 					(SELECT array_to_string(array_agg(display), ', ') 
 					 FROM workflow_tags 
 					 WHERE workflow_tag_id IN (
-						SELECT child_workflow_tag_id 
-						FROM workflow_errand_tags_links 
-						WHERE parent_workflow_errand_id=errand.workflow_errand_id)) AS tag_names
+							SELECT child_workflow_tag_id 
+							FROM workflow_errand_tags_links 
+							WHERE parent_workflow_errand_id=errand.workflow_errand_id AND
+								child_workflow_tag_id NOT IN (SELECT workflow_tag_id FROM workflow_tags WHERE name like 'System%'))
+					) AS tag_names
 				";
 			}
 
@@ -442,7 +533,7 @@ namespace modifies Workflow {
 						WHERE parent_workflow_mail_id=errand.mail_fkey)) AS to_address
 				";
 			}
-			if( format.toAddress ) {
+			if( format.fromAddress ) {
 				selectClause[] = "
 					(SELECT emailAddress
 					 FROM workflow_mailorigins
@@ -456,8 +547,9 @@ namespace modifies Workflow {
 			// workflow_simplemesssges
 			if( format.subject or format.question ) {
 				leftJoins['workflow_simplemessages AS question'] = "errand.message_fkey = question.workflow_simplemessage_id";
-				if( format.subject )  selectClause[] = "question.subject AS subject";
-				if( format.question ) selectClause[] = "question.body AS question";
+				leftJoins['workflow_mails AS mail'] = "errand.mail_fkey = mail.workflow_mail_id";
+				if( format.subject )  selectClause[] = "question.subject AS subject, mail.subject AS original_subject";
+				if( format.question ) selectClause[] = "question.body AS question, mail.body AS original_question";
 			}
 			if( format.answer ) {
 				leftJoins['workflow_answers AS answer'] = "errand.answer_fkey = answer.workflow_answer_id";
@@ -476,8 +568,6 @@ namespace modifies Workflow {
 				selectClause[] = "area.name AS area_name";
 			}
 			
-			Console.println("${.start} -> ${.finish}");
-			
 			if( .start ) {
 				whereClause[] = "errand.timestampArrive > ${.start}";
 			}
@@ -489,7 +579,20 @@ namespace modifies Workflow {
 			}
 			
 			if( not .allerrandsflag ) {
-				
+				if( .positiveTagList or .negativeTagList ) {
+					if( .positiveTagList ) {
+						whereClause[] = "errand.workflow_errand_id IN (SELECT parent_workflow_errand_id FROM workflow_errand_tags_links WHERE child_workflow_tag_id IN (" + .positiveTagList.join(',') using ( tag ) {
+							return '' + tag.id;
+						} + "))";
+					}
+					if( .negativeTagList ) {
+						whereClause[] = "errand.workflow_errand_id NOT IN (SELECT parent_workflow_errand_id FROM workflow_errand_tags_links WHERE child_workflow_tag_id IN (" + .negativeTagList.join(',') using ( tag ) {
+							return '' + tag.id;
+						} + "))";
+					}
+				}
+			} else {
+				whereClause[] = "errand.workflow_errand_id NOT IN (SELECT parent_workflow_errand_id FROM workflow_errand_tags_links WHERE parent_workflow_errand_id=errand.workflow_errand_id AND child_workflow_tag_id=${deleted_tag.id})";
 			}
 			
 			leftJoins.map() using ( join, condition ) {
@@ -505,7 +608,7 @@ namespace modifies Workflow {
 				(whereClause 
 					? "WHERE " + whereClause.join(' AND ')
 					: '') +
-				" OFFSET {offset} LIMIT {limit}";
+				"ORDER BY workflow_errand_id ASC OFFSET {offset} LIMIT {limit}";
 		}
 		function generatePreview {
 			object actual_export = Workflow.Export.load(self.id);
@@ -520,7 +623,7 @@ namespace modifies Workflow {
 			object writer = Exports.DataWriter.createForExport(actual_export);
 			object message = null;
 			array results = [];
-			number limit = 100;
+			number limit = 500;
 			number offset = 0;
 			
 			writer.start();
@@ -538,9 +641,9 @@ namespace modifies Workflow {
 			writer.finish();
 			log(self, "Export complete.");
 			
-			message = Exports.createMessage( export, write.finishFiles() );
+			message = Exports.createMessage( actual_export, writer.finishFiles() );
 			if( message ) {
-				log(self, "Sending export file${(write.finishFiles().size() > 1 ? 's' : '')} to ${export.optionalAddress}");
+				log(self, "Sending export file${(writer.finishFiles().size() > 1 ? 's' : '')} to ${actual_export.optionalAddress}");
 				MailUtilities.sendMessage( new Mail.Connection(), message );
 			}
 			
