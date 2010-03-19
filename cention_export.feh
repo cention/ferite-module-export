@@ -1,26 +1,437 @@
 uses "/cention/etc/webframework-config.feh";
 uses "webframework/webframework";
 uses "workflow";
+uses "MailUtilities";
+
+/*
+ * TODO:
+ *   Generate SQL to fetch the data from the database
+ *   Implement disk space unique row checking - this will probably have to be some sort of disk-base btree structure 
+ */
+
+global {
+	boolean logToConsole = true;
+	boolean logToFile = true;
+	string logFile = '/cention/logs/Exports.log';
+	object logFileObject;
+	object logClosure;
+}
+
+/**
+ * @function log
+ * @declaration function log( string text )
+ * @brief Logs a string of text either to the console or to a file
+ * @param string text the text to log
+ */
+function log( object export, string text ) {
+	text = '[' + formatDateTime(Date.GMTnow()) + '] {' + export.name + '} ' + text;
+
+	if( logToConsole )
+		Console.println( text );
+	
+	if( logToFile ) {
+		if( not logFileObject ) {
+			if( not Posix.stat(logFile) ) {
+				Posix.umask(0);
+				logFileObject = File.create( logFile, 0777);
+				logFileObject = File.open( logFile, FileSystem.O_RDWR );
+				if( logFileObject ) { 
+				}
+			} else {
+				logFileObject = File.open( logFile, FileSystem.O_RDWR );
+			}
+			if( not logFileObject ) {
+				raise new Error("Unable to open log file $logFile. Please check permissions");
+			} else {
+				logFileObject.seek( logFileObject.length(), Stream.SEEK_SET );
+				logFileObject.println("---------------------------------------");
+			}
+		}
+		logFileObject.println( text );
+	}
+	
+	if( logClosure ) {
+		logClosure.invoke(text);
+	}
+}
 
 namespace Exports {
-	function generatePreview( object export ) {
-		return [
-			[ 'id' => 1, 'from_email' => 'ctr1@cention.se' ],
-			[ 'id' => 2, 'from_email' => 'ctr2@cention.se' ],
-			[ 'id' => 3, 'from_email' => 'ctr3@cention.se' ],
-			[ 'id' => 4, 'from_email' => 'ctr4@cention.se' ],
-			[ 'id' => 5, 'from_email' => 'ctr5@cention.se' ],
-			[ 'id' => 6, 'from_email' => 'ctr6@cention.se' ],
-			[ 'id' => 7, 'from_email' => 'ctr7@cention.se' ],
-			[ 'id' => 8, 'from_email' => 'ctr8@cention.se' ]
-		]
+	
+	string exportPath = '';
+	
+	function setup {
+		.exportPath = (Config.CachePath - 'Cache/') + 'Exports/';
+		Directory.build(.exportPath);
+	}
+
+	function createMessage( object export, array exportedFiles ) {
+		object message = null;
+		
+		if( export.emailFlag ) {
+			string body;
+
+			object content = new Mail.MessageMultiPart();
+			object text = new Mail.MessagePart();
+			
+			message = new Mail.Message();
+			message.header = new Mail.MessageHeader();
+			message.header.from.add( new Mail.Address(export.optionalAddress) );
+			message.header.to.add( new Mail.Address(export.optionalAddress) );
+			
+			message.header.subject = I('Export {0:name} Completed').expand(export.name);
+			message.header.date = Date.localDate(Date.GMTnow()).format( '%a, %d %b %Y %H:%M:%S %z' );
+
+			message = MailUtilities.setOutgoingHeader(message,mail.from.emailAddress);
+
+			body = I('Your export {0:name} has completed. Please find the export within the attached file(s).').expand(export.name);
+			body = Regexp.replaceAll("\r\n", body, "\n");
+			body = Regexp.replaceAll("\r", body, "\n");
+			body = Regexp.replaceAll("\n", body, "\r\n");
+
+			text.type = Mail.Mime.TYPETEXT;
+			text.subtype = "plain";
+			text.charset = "UTF-8";
+			text.content = body;
+			content.addPart(text);
+			
+			exportedFiles.each() using ( exportedFile ) {
+				object part = new Mail.MessagePart();
+				part.filepath = exportedFile;
+				part.filename = File.name(exportedFile);
+				part.type = Mail.Mime.TYPEAPPLICATION;
+				part.subtype = "octet-stream";
+				part.encoding = Mail.Encoding.ENCBINARY;
+				content.addPart(part);
+			};
+
+			message.content = content;
+		}
+		return message;
+	}
+
+	class ExportResult {
+		number errand_id;
+		string from_address;
+		string to_address;
+		string subject;
+		string question;
+		string answer;
+		number timestamp_arrived;
+		number timestamp_opened;
+		number timestamp_answered;
+		number timestamp_closed;
+		number agent_id;
+		string agent_name;
+		number area_id;
+		string area_name;
+		number client_id;
+		string priority;
+		string tag_names;
+		
+		function toArray( object format ) {
+			array values = [];
+
+			if( format.errandId ) values['errand_id'] = .errand_id;
+			if( format.fromAddress ) values['from_address'] = .from_address;
+			if( format.toAddress ) values['to_address'] = .to_address;
+			if( format.subject ) values['subject'] = .subject;
+			if( format.question ) values['question'] = .question;
+			if( format.answer ) values['answer'] = .answer;
+			if( format.arrived ) values['timestamp_arrived'] = formatDateTime(.timestamp_arrived);
+			if( format.opened ) values['timestamp_opened'] = formatDateTime(.timestamp_opened);
+			if( format.answered ) values['timestamp_answered'] = formatDateTime(.timestamp_answered);
+			if( format.closed ) values['timestamp_closed'] = formatDateTime(.timestamp_closed);
+			if( format.agentid ) values['agent_id'] = .agent_id;
+			if( format.agentname ) values['agent_name'] = .agent_name;
+			if( format.areaid ) values['area_id'] = .area_id;
+			if( format.areaname ) values['area_name'] = .area_name;
+			if( format.clientid ) values['client_id'] = .client_id;
+			if( format.priority ) values['priority'] = .priority;
+			if( format.tags ) values['tag_names'] = .tag_names;
+
+			return values;
+		}
+		function toJSONForFormat( object format ) {
+			array objectValues = [];
+			.toArray(format).eachWithIndex() using ( _value, index ) {
+				string key = JSON.escape(values.getName(index));
+				string value = .valueToJSON(_value);
+				objectValues[] = "\"$key\":$value";
+			};
+			return "{" + objectValues.join(';') + "}";
+		}
+	}
+
+	abstract class DataWriter {
+		static function createForExport( object export ) {
+			switch( export.type ) {
+				case Workflow.Export.TYPE_EXCEL:
+					return new Exports.ExcelDataWriter(export);
+				case Workflow.Export.TYPE_CSV:
+					return new Exports.CSVDataWriter(export);
+				case Workflow.Export.TYPE_XML:
+					return new Exports.XMLDataWriter(export);
+				case Workflow.Export.TYPE_JSON:
+					return new Exports.JSONDataWriter(export);
+			}
+			return null;
+		}
+		
+		object  export;
+		object  outputStream;
+		number  recordedCount;
+		number  duplicateCount;
+
+		boolean useMemoryHashCache = true;
+		array   memoryHashCache;
+		number  memoryHashCacheSwitchLimit = 256000;
+		
+		constructor( object export ) {
+			.export = export;
+		}
+		function formatDate( number date ) {
+			number localDate = date + (Config.TimeZoneOffset * 60);
+			return Date.localDate(localDate).format('%Y%m%d');
+		}
+		function setupPathForExport {
+			Directory.build(Exports.exportPath + .export.name);
+			return Exports.exportPath + .export.name;
+		}
+		function filenameStub {
+			return .setupPathForExport() + "/${.export.name}_${.formatDate(.export.start)}_to_${.formatDate(.export.finish)}";
+		}
+		function start {
+			string path = .filenameStub() + ".intermediate.json";
+			File.remove(path);
+
+			.outputStream = File.create( path, 0644);
+			.outputStream = File.open( path, FileSystem.O_RDWR );
+			.recordedCount = 0;
+			.duplicateCount = 0;
+			
+			log( .export, "Starting export writing intermediate data to $path");
+		}
+		function hasSeenHash( string _hash ) {
+			string hash = ":$hash;";
+			if( .useMemoryHashCache ) {
+				if( .memoryHashCache.keyExists(hash) ) {
+					return true;
+				}
+				.memoryHashCache[hash] = true;
+				if( .memoryHashCache.size() > .memoryHashCacheSwitchLimit ) {
+					raise new Error("Hard memory hash limit hit - implement file based lookup of uniqueness");
+				}
+				return false;
+			}
+		}
+		function record( object row ) {
+			string json = row.toJSONForFormat(.export.exportFormat);
+			string md5 = MHash.hashString(json, MHash.SHA256);
+			
+			if( not .hasSeenHash(md5) ) {
+				.outputStream.writeln(json);
+				.outputStream.flush();
+				.recordedCount++;
+				if( .recordedCount % 1000 ) {
+					log( .export, "Recorded a total of ${.recordedCount} rows.");
+				}
+			} else {
+				.duplicateCount++;
+				if( .duplicateCount % 1000 ) {
+					log( .export, "Ignored a total of ${.duplicateCount} rows.");
+				}
+			}
+		}
+		function iterateIntermediateFile {
+			return .iterateIntermediateFile(true);
+		}
+		function iterateIntermediateFile( boolean compelex ) {
+			string path = .filenameStub() + ".intermediate.json";
+			object stream = File.open(path);
+			object handler = new Exports.ExportResult();
+			
+			while( not stream.eos() ) {
+				string line = stream.readln().trim(" \r\n");
+				if( complex ) {
+					handler = JSON.parse(line, handler);
+					deliver(handler);
+				} else {
+					deliver(line);
+				}
+			}
+		}
+		function finishFiles {
+			return  [ "- NO FILE TO FINISH -" ];
+		}
+		function finish {
+			.outputStream.flush();
+			.outputStream.close();
+			.outputStream = null;
+		}
+	}
+	
+	class ExcelDataWriter extends DataWriter { 
+		number tippingPoint = 20000;
+
+		function finishFiles {
+			number totalLeft = .recordedCount;
+			
+			if( totalLeft < tippingPoint ) {
+				return [ .filenameStub() + ".xls" ];
+			} else {
+				array list = [];
+				while( totalLeft >= .tippingPoint or totalLeft > 0 ) {
+					list[] = .filenameStub() + '.part-' + (list.size() + 1) + '.xls';
+					totalLeft -= .tippingPoint;
+				}
+				return list;
+			}
+		}
+	}
+	class CSVDataWriter extends DataWriter { 
+		function finishFiles
+			return [ .filenameStub() + ".csv" ];
+		function finish {
+			object output = null;
+			string path = .filenameStub() + '.csv';
+			
+			super.finish();
+			
+			File.remove(path);
+			output = File.create( path, 0777);
+			output = File.open( path, FileSystem.O_RDWR );
+
+			.iterateIntermediateFile() using ( row ) {
+				output.writeln(row.toArray(.export.exportFormat).join(',') using ( value ){
+					if( value isa string ) {
+						string real_value = value;
+						real_value = Regexp.replaceAll("\n", real_value, "\\n");
+						real_value = Regexp.replaceAll("\r", real_value, "\\r");
+						real_value = Regexp.replaceAll("\"", real_value, "\\\"");
+						return "\"$real_value\"";
+					} else {
+						return "$value";
+					}
+				});
+			};
+
+			output.flush();
+			output.close();
+		}
+	}
+	class XMLDataWriter extends DataWriter { 
+		function finishFiles
+			return [ .filenameStub() + ".xml" ];
+		function finish {
+			object output = null;
+			string path = .filenameStub() + '.xml';
+
+			super.finish();
+
+			File.remove(path);
+			output = File.create( path, 0777);
+			output = File.open( path, FileSystem.O_RDWR );
+			output.writeln("<?xml version=\"1.0\" ?>");
+			output.writeln("<export>");
+
+			.iterateIntermediateFile() using ( row ) {
+				array values = row.toArray(.export.exportFormat);
+				array xml_tags = [];
+				
+				values.map() using ( key, value ) {
+					if( value isa string ) {
+						xml_tags[] = "\t\t<$key>${EscapeHTML(value)}</$key>";
+					} else {
+						xml_tags[] = "\t\t<$key>$value</$key>";
+					}
+				};
+				output.writeln("\t<record>");
+				output.writeln(xml_tags.join("\n"));
+				output.writeln("\t</record>");
+			};
+
+			output.writeln("</export>");
+			output.flush();
+			output.close();
+		}
+	}
+	class JSONDataWriter extends DataWriter { 
+		function finishFiles
+			return  [ .filenameStub() + ".json" ];
+		function finish {
+			object output = null;
+			string path = .filenameStub() + '.csv';
+			string pendingComma = '';
+
+			super.finish();
+
+			File.remove(path);
+			output = File.create( path, 0777);
+			output = File.open( path, FileSystem.O_RDWR );
+			output.writeln("[");
+
+			.iterateIntermediateFile(false) using ( row ) {
+				if( pendingComma ) {
+					output.writeln(pendingComma);
+				}
+				output.write(row);
+				pendingComma = ',';
+			};
+			
+			output.writeln("]");
+			output.flush();
+			output.close();
+		}
 	}
 }
 
 namespace modifies Workflow {
 	class modifies Export {
+		function runQuery( string query, number offset, number limit ) {
+			string sql = query;
+			sql = Regexp.replaceAll('{limit}', sql, "$limit");
+			sql = Regexp.replaceAll('{offset}', sql, "$offset");
+			return ObjRunObject.invoke('ObjectServer.query.rawSQL', [ 'sql' => sql ], new JSON.ArrayHandler(Exports.ExportResult));
+		}
+		function generateSQL {
+			
+		}
 		function generatePreview {
-			return Exports.generatePreview(self);
+			array results = [];
+			.runQuery(.generateSQL(), 0, 10).each() using ( row ) {
+				results[] = row.toArray(export.exportFormat);
+			};
+			return results;
+		}
+		function run {
+			object writer = Exports.DataWriter.createForExport(self);
+			object message = null;
+			array results = [];
+			number limit = 100;
+			number offset = 0;
+			
+			writer.start();
+			do {
+				boolean resultSeen = false;
+				.runQuery(.generateSQL(), offset, limit).each() using ( row ) {
+					writer.record(row);
+					resultSeen = true;
+				};
+				offset += limit;
+			} while( resultSeen );
+
+			log(self, "Totals: recorded: ${writer.recordedCount}; duplicate rows eliminated: ${writer.duplicateCount}");
+			log(self, "Finishing export to file: ${writer.finishFiles()}");
+			writer.finish();
+			log(self, "Export complete.");
+			
+			message = Exports.createMessage( export, write.finishFiles() );
+			if( message ) {
+				log(self, "Sending export file${(write.finishFiles().size() > 1 ? 's' : '')} to ${export.optionalAddress}");
+				MailUtilities.sendMessage( new Mail.Connection(), message );
+			}
 		}
 	}
 }
+
+Exports.setup();
