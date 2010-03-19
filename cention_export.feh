@@ -198,7 +198,7 @@ namespace Exports {
 			return Exports.exportPath + .export.name;
 		}
 		function filenameStub {
-			return .setupPathForExport() + "/${.export.name}_${.formatDate(.export.start)}_to_${.formatDate(.export.finish)}";
+			return .setupPathForExport() + "/${Regexp.replaceAll(' ', .export.name, '-')}_${.formatDate(.export.start)}_to_${.formatDate(.export.finish)}";
 		}
 		function start {
 			string path = .filenameStub() + ".intermediate.json";
@@ -391,20 +391,133 @@ namespace modifies Workflow {
 			string sql = query;
 			sql = Regexp.replaceAll('{limit}', sql, "$limit");
 			sql = Regexp.replaceAll('{offset}', sql, "$offset");
+			
+			log(self, "Running query: $sql");
+			
 			return ObjRunObject.invoke('ObjectServer.query.rawSQL', [ 'sql' => sql ], new JSON.ArrayHandler(Exports.ExportResult));
 		}
 		function generateSQL {
+			object format = self.exportFormat;
 			
+			array selectClause = [];
+			array leftJoins = [];
+			array whereClause = [];
+			array collapsable;
+			
+			// workflow_errands
+			if( format.errandId ) selectClause[] = "errand.workflow_errand_id AS errand_id";
+			if( format.arrived )  selectClause[] = "errand.timestampArrive AS timestamp_arrived";
+			if( format.opened )   selectClause[] = "errand.timestampOpen AS timestamp_opened";
+			if( format.answered ) selectClause[] = "errand.timestampLastAnswered AS timestamp_answered";
+			if( format.closed )   selectClause[] = "errand.timestampClosed AS timestamp_closed";
+			if( format.agentid )  selectClause[] = "errand.owner_fkey AS agent_id";
+			if( format.areaid )   selectClause[] = "errand.targetArea_fkey AS area_id";
+			if( format.clientid ) selectClause[] = "errand.client_fkey AS client_id";
+
+			if( format.priority ) {
+				selectClause[] = "priority.name AS priority";
+				leftJoins['workflow_priorities AS priority'] = "errand.priority_fkey = priority.workflow_priority_id";
+			}
+			
+			// workflow_errand_tags_links, workflow_tags
+			if( format.tags ) {
+				selectClause[] = "
+					(SELECT array_to_string(array_agg(display), ', ') 
+					 FROM workflow_tags 
+					 WHERE workflow_tag_id IN (
+						SELECT child_workflow_tag_id 
+						FROM workflow_errand_tags_links 
+						WHERE parent_workflow_errand_id=errand.workflow_errand_id)) AS tag_names
+				";
+			}
+
+			// workflow_mail... ish.
+			if( format.toAddress ) {
+				selectClause[] = "
+					(SELECT array_to_string(array_agg(emailAddress), ', ') 
+					 FROM workflow_mailorigins
+					 WHERE workflow_mailorigin_id IN (
+						SELECT child_workflow_mailorigin_id 
+						FROM workflow_mail_to_links 
+						WHERE parent_workflow_mail_id=errand.mail_fkey)) AS to_address
+				";
+			}
+			if( format.toAddress ) {
+				selectClause[] = "
+					(SELECT emailAddress
+					 FROM workflow_mailorigins
+					 WHERE workflow_mailorigin_id IN (
+						SELECT from_fkey 
+						FROM workflow_mails 
+						WHERE workflow_mail_id=errand.mail_fkey)) AS from_address
+				";
+			}
+			
+			// workflow_simplemesssges
+			if( format.subject or format.question ) {
+				leftJoins['workflow_simplemessages AS question'] = "errand.message_fkey = question.workflow_simplemessage_id";
+				if( format.subject )  selectClause[] = "question.subject AS subject";
+				if( format.question ) selectClause[] = "question.body AS question";
+			}
+			if( format.answer ) {
+				leftJoins['workflow_answers AS answer'] = "errand.answer_fkey = answer.workflow_answer_id";
+				leftJoins['workflow_simplemessages AS answer_content'] = "answer.message_fkey = answer_content.workflow_simplemessage_id";
+				selectClause[] = "answer_content.body AS answer";
+			}
+
+			// workflow_users
+			if( format.agentname ) {
+				leftJoins['workflow_users AS agent'] = "errand.owner_fkey = agent.workflow_user_id";
+				selectClause[] = "(agent.username || '(' || agent.loginname || ')') AS agent_name";
+			}
+			// workflow_areas
+			if( format.areaname ) {
+				leftJoins['workflow_areas AS area'] = "errand.targetArea_fkey = area.workflow_area_id";
+				selectClause[] = "area.name AS area_name";
+			}
+			
+			Console.println("${.start} -> ${.finish}");
+			
+			if( .start ) {
+				whereClause[] = "errand.timestampArrive > ${.start}";
+			}
+			if( .finish ) {
+				whereClause[] = "errand.timestampArrive < ${.finish}";
+			}
+			if( .areas ) {
+				whereClause[] = "errand.targetArea_fkey IN (" + .areas.join(',') using ( area ) { return '' + area.id; } + ")";
+			}
+			
+			if( not .allerrandsflag ) {
+				
+			}
+			
+			leftJoins.map() using ( join, condition ) {
+				collapsable[] = "LEFT JOIN $join ON $condition";
+			};
+			
+			return 
+				"SELECT " + selectClause.join(',') + " " +
+				"FROM workflow_errands AS errand " + 
+				(leftJoins
+					? collapsable.join(" ") + " "
+					: ' ' ) +
+				(whereClause 
+					? "WHERE " + whereClause.join(' AND ')
+					: '') +
+				" OFFSET {offset} LIMIT {limit}";
 		}
 		function generatePreview {
+			object actual_export = Workflow.Export.load(self.id);
 			array results = [];
-			.runQuery(.generateSQL(), 0, 10).each() using ( row ) {
-				results[] = row.toArray(export.exportFormat);
+			.runQuery(actual_export.generateSQL(), 0, 10).each() using ( row ) {
+				results[] = row.toArray(actual_export.exportFormat);
 			};
 			return results;
 		}
 		function run {
-			object writer = Exports.DataWriter.createForExport(self);
+			object actual_export = Workflow.Export.load(self.id);
+			object writer = Exports.DataWriter.createForExport(actual_export);
 			object message = null;
 			array results = [];
 			number limit = 100;
@@ -413,7 +526,7 @@ namespace modifies Workflow {
 			writer.start();
 			do {
 				boolean resultSeen = false;
-				.runQuery(.generateSQL(), offset, limit).each() using ( row ) {
+				.runQuery(actual_export.generateSQL(), offset, limit).each() using ( row ) {
 					writer.record(row);
 					resultSeen = true;
 				};
@@ -430,6 +543,8 @@ namespace modifies Workflow {
 				log(self, "Sending export file${(write.finishFiles().size() > 1 ? 's' : '')} to ${export.optionalAddress}");
 				MailUtilities.sendMessage( new Mail.Connection(), message );
 			}
+			
+			// Create GeneratedExport object
 		}
 	}
 }
