@@ -1,0 +1,26 @@
+uses "/cention/etc/webframework-config.feh";
+uses "webframework/webframework";
+uses "workflow";
+
+namespace Exports {
+	function generatePreview( object export ) {
+		return [
+			[ 'id' => 1, 'from_email' => 'ctr1@cention.se' ],
+			[ 'id' => 2, 'from_email' => 'ctr2@cention.se' ],
+			[ 'id' => 3, 'from_email' => 'ctr3@cention.se' ],
+			[ 'id' => 4, 'from_email' => 'ctr4@cention.se' ],
+			[ 'id' => 5, 'from_email' => 'ctr5@cention.se' ],
+			[ 'id' => 6, 'from_email' => 'ctr6@cention.se' ],
+			[ 'id' => 7, 'from_email' => 'ctr7@cention.se' ],
+			[ 'id' => 8, 'from_email' => 'ctr8@cention.se' ]
+		]
+	}
+}
+
+namespace modifies Workflow {
+	class modifies Export {
+		function generatePreview {
+			return Exports.generatePreview(self);
+		}
+	}
+}

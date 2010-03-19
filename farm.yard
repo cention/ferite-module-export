@@ -8,9 +8,7 @@
 		<property type="prefix" value="$(FeriteModuleSourceDir)" />  
 
 		<list type="source">
-			<file name="ExportUtilities.fe" />
-			<file name="Export.feh" />
-			<file name="export.fe" />
+			<file name="cention_export.feh" />
 		</list>
 
 		<list type="package">
