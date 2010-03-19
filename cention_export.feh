@@ -621,6 +621,7 @@ namespace modifies Workflow {
 		function run {
 			object actual_export = Workflow.Export.load(self.id);
 			object writer = Exports.DataWriter.createForExport(actual_export);
+			string sql = actual_export.generateSQL();
 			object message = null;
 			array results = [];
 			number limit = 500;
@@ -629,7 +630,7 @@ namespace modifies Workflow {
 			writer.start();
 			do {
 				boolean resultSeen = false;
-				.runQuery(actual_export.generateSQL(), offset, limit).each() using ( row ) {
+				.runQuery(sql, offset, limit).each() using ( row ) {
 					writer.record(row);
 					resultSeen = true;
 				};
