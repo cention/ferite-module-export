@@ -8,7 +8,6 @@ uses "cmail";
  * TODO:
  *   Generate SQL to fetch the data from the database - mostly done just need to implement email and word list checks
  *   Implement disk space unique row checking - this will probably have to be some sort of disk-base btree structure 
- *   Update status and progress.
  */
 
 global {
@@ -259,16 +258,26 @@ namespace Exports {
 				}
 			}
 		}
-		function iterateIntermediateFile {
-			return .iterateIntermediateFile(true) using recipient();
+		function iterateIntermediateFile( object generated_export ) {
+			return .iterateIntermediateFile( generated_export, true, null ) using recipient();
 		}
-		function iterateIntermediateFile( boolean complex, object continuance ) {
+		function iterateIntermediateFile( object generated_export, boolean complex, object continuance ) {
 			string path = .filenameStub() + ".intermediate.json";
 			object stream = (continuance ? continuance : File.open(path));
 			object handler = new Exports.ExportResult();
+			number progress = 0;
 			
 			while( not stream.eos() ) {
 				string line = stream.readln().trim(" \r\n");
+				number real_progress = 0;
+				
+				progress++;
+				real_progress = ((progress / (.recordedCount + 0.0)) * 50).round() + 50;
+				
+				if( (real_progress % 5) == 0 ) {
+					.export.updateProgress( generated_export, real_progress );
+				}
+				
 				if( complex ) {
 					if( line ) {
 						handler = JSON.parse(line, handler);
@@ -313,7 +322,7 @@ namespace Exports {
 			}
 		}
 		
-		function finish {
+		function finish( object generated_export ) {
 			object output = null;
 			array paths = .finishFiles();
 			boolean writtenHeader = false;
@@ -332,7 +341,7 @@ namespace Exports {
 				output.writeln("<body>");
 				output.writeln("<table>");
 
-				stream = .iterateIntermediateFile( true, stream ) using ( row ) {
+				stream = .iterateIntermediateFile( generated_export, true, stream ) using ( row ) {
 					array values = row.toArray(.export.exportFormat);
 					array xml_tags = [];
 
@@ -378,7 +387,7 @@ namespace Exports {
 	class CSVDataWriter extends DataWriter { 
 		function finishFiles
 			return [ .filenameStub() + ".csv" ];
-		function finish {
+		function finish( object generated_export ) {
 			object output = null;
 			string path = .filenameStub() + '.csv';
 			
@@ -388,7 +397,7 @@ namespace Exports {
 			output = File.create( path, 0644);
 			output = File.open( path, FileSystem.O_RDWR );
 
-			.iterateIntermediateFile() using ( row ) {
+			.iterateIntermediateFile(generated_export) using ( row ) {
 				output.writeln(row.toArray(.export.exportFormat).join(',') using ( value ){
 					if( value isa string ) {
 						string real_value = value;
@@ -409,7 +418,7 @@ namespace Exports {
 	class XMLDataWriter extends DataWriter { 
 		function finishFiles
 			return [ .filenameStub() + ".xml" ];
-		function finish {
+		function finish( object generated_export ) {
 			object output = null;
 			string path = .filenameStub() + '.xml';
 
@@ -421,7 +430,7 @@ namespace Exports {
 			output.writeln("<?xml version=\"1.0\" ?>");
 			output.writeln("<export>");
 
-			.iterateIntermediateFile() using ( row ) {
+			.iterateIntermediateFile(generated_export) using ( row ) {
 				array values = row.toArray(.export.exportFormat);
 				array xml_tags = [];
 				
@@ -445,7 +454,7 @@ namespace Exports {
 	class JSONDataWriter extends DataWriter { 
 		function finishFiles
 			return  [ .filenameStub() + ".json" ];
-		function finish {
+		function finish( object generated_export ) {
 			object output = null;
 			string path = .filenameStub() + '.json';
 			string pendingComma = '';
@@ -457,7 +466,7 @@ namespace Exports {
 			output = File.open( path, FileSystem.O_RDWR );
 			output.writeln("[");
 
-			.iterateIntermediateFile(false) using ( row ) {
+			.iterateIntermediateFile(generated_export, false, null) using ( row ) {
 				if( pendingComma ) {
 					output.writeln(pendingComma);
 				}
@@ -474,16 +483,31 @@ namespace Exports {
 
 namespace modifies Workflow {
 	class modifies Export {
+		function updateProgress( object generated_export, number progress ) {
+			if( generated_export.progress < progress ) {
+				log(self, "Progress: $progress%");
+				generated_export.setValue('progress', progress);
+				generated_export.save();
+			}
+		}
 		function runQuery( string query, number offset, number limit ) {
 			string sql = query;
 			sql = Regexp.replaceAll('{limit}', sql, "$limit");
 			sql = Regexp.replaceAll('{offset}', sql, "$offset");
-			if( Config.Debug ) {
-				log(self, "Running query: $sql");
+			monitor {
+				return ObjRunObject.invoke('ObjectServer.query.rawSQL', [ 'sql' => sql ], new JSON.ArrayHandler(Exports.ExportResult));
+			} handle {
+				log(self, "Error running query: $sql (${err.str})");
 			}
-			return ObjRunObject.invoke('ObjectServer.query.rawSQL', [ 'sql' => sql ], new JSON.ArrayHandler(Exports.ExportResult));
+		}
+		function fetchExportSize( string query ) {
+			array results = ObjRunObject.rawQuery(query);
+			return results[0]['export_size'];
 		}
 		function generateSQL {
+			return .generateSQL('', false);
+		}
+		function generateSQL( string prefix, boolean aggregate ) {
 			object deleted_tag = Workflow.Tag.fetch(Workflow.Errand.TAG_DELETED);
 			
 			object format = self.exportFormat;
@@ -600,7 +624,7 @@ namespace modifies Workflow {
 			};
 			
 			return 
-				"SELECT " + selectClause.join(',') + " " +
+				(prefix ? prefix : "SELECT " + selectClause.join(',')) + " " +
 				"FROM workflow_errands AS errand " + 
 				(leftJoins
 					? collapsable.join(" ") + " "
@@ -608,7 +632,7 @@ namespace modifies Workflow {
 				(whereClause 
 					? "WHERE " + whereClause.join(' AND ')
 					: '') +
-				"ORDER BY workflow_errand_id ASC OFFSET {offset} LIMIT {limit}";
+				(aggregate ? '' : "ORDER BY workflow_errand_id ASC OFFSET {offset} LIMIT {limit}");
 		}
 		function generatePreview {
 			object actual_export = Workflow.Export.load(self.id);
@@ -620,35 +644,72 @@ namespace modifies Workflow {
 		}
 		function run {
 			object actual_export = Workflow.Export.load(self.id);
+			object generated_export = new Workflow.GeneratedExports();
 			object writer = Exports.DataWriter.createForExport(actual_export);
-			string sql = actual_export.generateSQL();
+			number export_size = 0;
+			string fetch_sql = actual_export.generateSQL();
 			object message = null;
 			array results = [];
 			number limit = 500;
 			number offset = 0;
+			boolean keepRunning = true;
+
+			log(self, "Starting export '${self.name}");
+			export_size = .fetchExportSize(actual_export.generateSQL('SELECT COUNT(errand.workflow_errand_id) AS export_size', true));
+			log(self, "Export will be a maximum of $export_size rows.");
+			
+			actual_export.setValue('exportState', Workflow.Export.STATE_RUNNING);
+			actual_export.save();
+
+			generated_export.setValue('export', actual_export);
+			generated_export.setValue('start', Date.GMTnow());
+			generated_export.setValue('size', export_size);
+			generated_export.save();
 			
 			writer.start();
 			do {
 				boolean resultSeen = false;
-				.runQuery(sql, offset, limit).each() using ( row ) {
-					writer.record(row);
-					resultSeen = true;
-				};
-				offset += limit;
-			} while( resultSeen );
+				actual_export = Workflow.Export.load(actual_export.id);
+				if( actual_export.exportState == Workflow.Export.STATE_STOPPED ) {
+					log(self, "Remote termination of export requested. Finishing.");
+					keepRunning = false;
+				} else {
+					// Update the progress
+					.updateProgress( generated_export, ((offset / (export_size + 0.0)) * 50).round() );
+					// Run the data retrival
+					.runQuery(fetch_sql, offset, limit).each() using ( row ) {
+						writer.record(row);
+						resultSeen = true;
+					};
+					offset += limit;
+				}
+			} while( resultSeen and keepRunning );
 
-			log(self, "Totals: recorded: ${writer.recordedCount}; duplicate rows eliminated: ${writer.duplicateCount}");
-			log(self, "Finishing export to file: ${writer.finishFiles()}");
-			writer.finish();
-			log(self, "Export complete.");
+			if( keepRunning ) {
+				log(self, "Totals: recorded: ${writer.recordedCount}; duplicate rows eliminated: ${writer.duplicateCount}");
+				log(self, "Finishing export to file: ${writer.finishFiles()}");
+				writer.finish(generated_export);
+				log(self, "Files written - export '${actual_export.name}' complete.");
 			
-			message = Exports.createMessage( actual_export, writer.finishFiles() );
-			if( message ) {
-				log(self, "Sending export file${(writer.finishFiles().size() > 1 ? 's' : '')} to ${actual_export.optionalAddress}");
-				MailUtilities.sendMessage( new Mail.Connection(), message );
+				message = Exports.createMessage( actual_export, writer.finishFiles() );
+				if( message ) {
+					log(self, "Sending export file${(writer.finishFiles().size() > 1 ? 's' : '')} to ${actual_export.optionalAddress}");
+					MailUtilities.sendMessage( new Mail.Connection(), message );
+				}
+
+				log(self, "Recording generated report for UI.");
+				generated_export.setValue('progress', 100);
+				generated_export.setValue('size', writer.recordedCount);
+				generated_export.setValue('finish', Date.GMTnow());
+				generated_export.setValue('filename', writer.finishFiles().join(':'));
+				generated_export.save();
+				log(self, "Export recorded to object with id ${generated_export.id}.");
+			} else {
+				actual_export = Workflow.Export.load(actual_export.id);
+				actual_export.setValue('exportState', Workflow.Export.STATE_IDLE);
+				actual_export.save();
+				generated_export.delete();
 			}
-			
-			// Create GeneratedExport object
 		}
 	}
 }
