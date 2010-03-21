@@ -689,7 +689,7 @@ namespace modifies Workflow {
 			writer.start();
 			do {
 				boolean resultSeen = false;
-				actual_export = Workflow.Export.load(actual_export.id);
+				actual_export = Workflow.Export.forceLoad(actual_export.id);
 				if( actual_export.exportState == Workflow.Export.STATE_STOPPED ) {
 					log(self, "Remote termination of export requested. Finishing.");
 					keepRunning = false;
@@ -728,7 +728,7 @@ namespace modifies Workflow {
 				generated_export.delete();
 			}
 
-			actual_export = Workflow.Export.load(actual_export.id);
+			actual_export = Workflow.Export.forceLoad(actual_export.id);
 			actual_export.setValue('exportState', Workflow.Export.STATE_IDLE);
 			actual_export.save();
 		}
