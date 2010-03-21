@@ -56,26 +56,6 @@ function log( object export, string text ) {
 	}
 }
 
-
-namespace modifies Stream {
-	class modifies Stream {
-		function fixed_readln {
-			string data = '';
-			number eolLength = Stream.EndOfLine.length();
-			number dataLength = 0;
-			string new_block = '';
-		
-			do {
-				new_block = .readln();
-				data += new_block;
-				dataLength = data.length();
-			} while( new_block and dataLength > eolLength and data[dataLength - eolLength..dataLength - 1] != Stream.EndOfLine );
-		
-			return data;
-		}
-	}
-}
-
 namespace Exports {
 	
 	string exportPath = '';
@@ -288,7 +268,7 @@ namespace Exports {
 			number progress = 0;
 			
 			while( not stream.eos() ) {
-				string line = stream.fixed_readln().trim(" \r\n");
+				string line = stream.readln().trim(" \r\n");
 				number real_progress = 0;
 				
 				progress++;
