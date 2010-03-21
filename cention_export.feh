@@ -56,6 +56,26 @@ function log( object export, string text ) {
 	}
 }
 
+
+namespace modifies Stream {
+	class modifies Stream {
+		function fixed_readln {
+			string data = '';
+			number eolLength = Stream.EndOfLine.length();
+			number dataLength = 0;
+			string new_block = '';
+		
+			do {
+				new_block = .readln();
+				data += new_block;
+				dataLength = data.length();
+			} while( new_block and dataLength > eolLength and data[dataLength - eolLength..dataLength - 1] != Stream.EndOfLine );
+		
+			return data;
+		}
+	}
+}
+
 namespace Exports {
 	
 	string exportPath = '';
@@ -268,7 +288,7 @@ namespace Exports {
 			number progress = 0;
 			
 			while( not stream.eos() ) {
-				string line = stream.readln().trim(" \r\n");
+				string line = stream.fixed_readln().trim(" \r\n");
 				number real_progress = 0;
 				
 				progress++;
@@ -654,7 +674,7 @@ namespace modifies Workflow {
 			number offset = 0;
 			boolean keepRunning = true;
 
-			log(self, "Starting export '${self.name}");
+			log(self, "Starting export '${self.name}'");
 			export_size = .fetchExportSize(actual_export.generateSQL('SELECT COUNT(errand.workflow_errand_id) AS export_size', true));
 			log(self, "Export will be a maximum of $export_size rows.");
 			
@@ -705,11 +725,12 @@ namespace modifies Workflow {
 				generated_export.save();
 				log(self, "Export recorded to object with id ${generated_export.id}.");
 			} else {
-				actual_export = Workflow.Export.load(actual_export.id);
-				actual_export.setValue('exportState', Workflow.Export.STATE_IDLE);
-				actual_export.save();
 				generated_export.delete();
 			}
+
+			actual_export = Workflow.Export.load(actual_export.id);
+			actual_export.setValue('exportState', Workflow.Export.STATE_IDLE);
+			actual_export.save();
 		}
 	}
 }
