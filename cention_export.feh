@@ -36,8 +36,6 @@ function log( object export, string text ) {
 				Posix.umask(0);
 				logFileObject = File.create( logFile, 0644);
 				logFileObject = File.open( logFile, FileSystem.O_RDWR );
-				if( logFileObject ) { 
-				}
 			} else {
 				logFileObject = File.open( logFile, FileSystem.O_RDWR );
 			}
@@ -194,6 +192,7 @@ namespace Exports {
 		object  outputStream;
 		number  recordedCount;
 		number  duplicateCount;
+		string  tag;
 
 		boolean useMemoryHashCache = true;
 		array   memoryHashCache;
@@ -211,15 +210,19 @@ namespace Exports {
 			Directory.build(path);
 			return path;
 		}
+		function setTag( string tag ) {
+			.tag = tag;
+		}
 		function filenameStub {
-			return .setupPathForExport() + "/${Regexp.replaceAll(' ', .export.name, '-')}_${.formatDate(.export.start)}_to_${.formatDate(.export.finish)}";
+			return .setupPathForExport() + "/${Regexp.replaceAll(' ', .export.name, '-')}_${.formatDate(.export.start)}_to_${.formatDate(.export.finish)}_${.tag}";
 		}
 		function start {
 			string path = .filenameStub() + ".intermediate.json";
-			File.remove(path);
 
+			File.remove(path);
 			.outputStream = File.create( path, 0644);
-			.outputStream = File.open( path, FileSystem.O_RDWR );
+			.outputStream = null;
+
 			.recordedCount = 0;
 			.duplicateCount = 0;
 			
@@ -240,13 +243,24 @@ namespace Exports {
 				raise new Error("Implement file based lookup of uniqueness");
 			}
 		}
+		function record( array list ) {
+			string path = .filenameStub() + ".intermediate.json";
+			.outputStream = File.open( path, FileSystem.O_RDWR );
+			.outputStream.seek( .outputStream.length(), Stream.SEEK_SET );
+			list.each() using ( row ) {
+				.record(row);
+			};
+			.outputStream.flush();
+			.outputStream.close();
+			.outputStream = null;
+			return (list.size() >  0);
+		}
 		function record( object row ) {
 			string json = row.toJSONForFormat(.export.exportFormat);
 			string md5 = String.base64encode(MHash.hashString(json, MHash.SHA256));
 			
 			if( not .hasSeenHash(md5) ) {
 				.outputStream.writeln(json);
-				.outputStream.flush();
 				.recordedCount++;
 				if( (.recordedCount % 1000) == 0 ) {
 					log( .export, "Recorded a total of ${.recordedCount} rows.");
@@ -298,9 +312,11 @@ namespace Exports {
 			return  [ "- NO FILE TO FINISH -" ];
 		}
 		function finish {
-			.outputStream.flush();
-			.outputStream.close();
-			.outputStream = null;
+			if( .outputStream ) {
+				.outputStream.flush();
+				.outputStream.close();
+				.outputStream = null;
+			}
 		}
 	}
 	
@@ -666,6 +682,7 @@ namespace modifies Workflow {
 			generated_export.setValue('size', export_size);
 			generated_export.save();
 			
+			writer.setTag("version-${generated_export.id}");
 			writer.start();
 			do {
 				boolean resultSeen = false;
@@ -677,10 +694,7 @@ namespace modifies Workflow {
 					// Update the progress
 					.updateProgress( generated_export, ((offset / (export_size + 0.0)) * 50).round() );
 					// Run the data retrival
-					.runQuery(fetch_sql, offset, limit).each() using ( row ) {
-						writer.record(row);
-						resultSeen = true;
-					};
+					resultSeen = writer.record(.runQuery(fetch_sql, offset, limit));
 					offset += limit;
 				}
 			} while( resultSeen and keepRunning );
