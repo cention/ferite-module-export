@@ -2,8 +2,7 @@
 <module>
 	<name>Export</name>
 	<documentation-list>
-		<include>Export.feh</include>
-		<include>export.fe</include>
+		<include>cention_export.feh</include>
 	</documentation-list>
 	<dependance-list>
 	</dependance-list>
