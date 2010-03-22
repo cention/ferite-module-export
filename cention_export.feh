@@ -57,56 +57,6 @@ function log( object export, string text ) {
 namespace Exports {
 	
 	string exportPath = '';
-	
-	function setup {
-		.exportPath = (Config.CachePath - 'Cache/') + 'Exports/';
-		Directory.build(.exportPath);
-	}
-
-	function createMessage( object export, array exportedFiles ) {
-		object message = null;
-		
-		if( export.emailflag ) {
-			string body;
-
-			object content = new Mail.MessageMultiPart();
-			object text = new Mail.MessagePart();
-			
-			message = new Mail.Message();
-			message.header = new Mail.MessageHeader();
-			message.header.from.add( new Mail.Address(export.optionalAddress) );
-			message.header.to.add( new Mail.Address(export.optionalAddress) );
-			
-			message.header.subject = I('Export {0:name} Completed').expand(export.name);
-			message.header.date = Date.localDate(Date.GMTnow()).format( '%a, %d %b %Y %H:%M:%S %z' );
-
-			message = MailUtilities.setOutgoingHeader(message,export.optionalAddress);
-
-			body = I('Your export {0:name} has completed. Please find the export within the attached file(s).').expand(export.name);
-			body = Regexp.replaceAll("\r\n", body, "\n");
-			body = Regexp.replaceAll("\r", body, "\n");
-			body = Regexp.replaceAll("\n", body, "\r\n");
-
-			text.type = Mail.Mime.TYPETEXT;
-			text.subtype = "plain";
-			text.charset = "UTF-8";
-			text.content = body;
-			content.addPart(text);
-			
-			exportedFiles.each() using ( exportedFile ) {
-				object part = new Mail.MessagePart();
-				part.filepath = exportedFile;
-				part.filename = File.name(exportedFile);
-				part.type = Mail.Mime.TYPEAPPLICATION;
-				part.subtype = "octet-stream";
-				part.encoding = Mail.Encoding.ENCBINARY;
-				content.addPart(part);
-			};
-
-			message.content = content;
-		}
-		return message;
-	}
 
 	class ExportResult {
 		number errand_id;
@@ -137,6 +87,8 @@ namespace Exports {
 		number _internal_timestamp_answered;
 		number _internal_timestamp_closed;
 
+		string _internal_from_address;
+		string _internal_errand_text;
 		
 		function toArray( object format ) {
 			array values = [];
@@ -245,10 +197,44 @@ namespace Exports {
 		}
 		function record( array list ) {
 			string path = .filenameStub() + ".intermediate.json";
+			boolean checkingErrandContents = (.getPositiveSearchTerms() or .getNegativeSearchTerms() ? true : false);
+			boolean checkingFromAddress = (.getPositiveEmailLists() or .getNegativeEmailLists() ? true : false);
+
+			array positiveSearchTerms = .export.getPositiveSearchTerms();
+			array negativeSearchTerms = .export.getNegativeeSearchTerms();
+			array positiveEmailLists = .export.getPositiveEmailLists();
+			array negativeEmailLists = .export.getNegativeEmailLists();
+
 			.outputStream = File.open( path, FileSystem.O_RDWR );
 			.outputStream.seek( .outputStream.length(), Stream.SEEK_SET );
 			list.each() using ( row ) {
-				.record(row);
+				boolean shouldRecord = true;
+				
+				if( checkingErrandContents ) {
+					shouldRecord = shouldRecord and positiveSearchTerms.each() using ( term ) {
+						return (row._internal_errand_text.index(term) >= 0);
+					};
+					shouldRecord = shouldRecord and negativeEmailLists.each() using ( term ) {
+						return (row._internal_errand_text.index(term) == -1);
+					};
+				}
+
+				if( checkingFromAddress ) {
+					shouldRecord = shouldRecord and positiveEmailLists.each() using ( email ) {
+						string address = (row.from_address ? row.from_address : row._internal_from_address);
+						return (address.index(term) >= 0);
+					};
+					shouldRecord = shouldRecord and negativeEmailLists.each() using ( email ) {
+						string address = (row.from_address ? row.from_address : row._internal_from_address);
+						return (address.index(term) == -1);
+					};
+				}
+
+				if( shouldRecord ) {
+					.record(row);
+				} else {
+					.duplicateCount++;
+				}
 			};
 			.outputStream.flush();
 			.outputStream.close();
@@ -258,7 +244,7 @@ namespace Exports {
 		function record( object row ) {
 			string json = row.toJSONForFormat(.export.exportFormat);
 			string md5 = String.base64encode(MHash.hashString(json, MHash.SHA256));
-			
+		
 			if( not .hasSeenHash(md5) ) {
 				.outputStream.writeln(json);
 				.recordedCount++;
@@ -495,6 +481,56 @@ namespace Exports {
 			output.close();
 		}
 	}
+
+	function setup {
+		.exportPath = (Config.CachePath - 'Cache/') + 'Exports/';
+		Directory.build(.exportPath);
+	}
+
+	function createMessage( object export, array exportedFiles ) {
+		object message = null;
+		
+		if( export.emailflag ) {
+			string body;
+
+			object content = new Mail.MessageMultiPart();
+			object text = new Mail.MessagePart();
+			
+			message = new Mail.Message();
+			message.header = new Mail.MessageHeader();
+			message.header.from.add( new Mail.Address(export.optionalAddress) );
+			message.header.to.add( new Mail.Address(export.optionalAddress) );
+			
+			message.header.subject = I('Export {0:name} Completed').expand(export.name);
+			message.header.date = Date.localDate(Date.GMTnow()).format( '%a, %d %b %Y %H:%M:%S %z' );
+
+			message = MailUtilities.setOutgoingHeader(message,export.optionalAddress);
+
+			body = I('Your export {0:name} has completed. Please find the export within the attached file(s).').expand(export.name);
+			body = Regexp.replaceAll("\r\n", body, "\n");
+			body = Regexp.replaceAll("\r", body, "\n");
+			body = Regexp.replaceAll("\n", body, "\r\n");
+
+			text.type = Mail.Mime.TYPETEXT;
+			text.subtype = "plain";
+			text.charset = "UTF-8";
+			text.content = body;
+			content.addPart(text);
+			
+			exportedFiles.each() using ( exportedFile ) {
+				object part = new Mail.MessagePart();
+				part.filepath = exportedFile;
+				part.filename = File.name(exportedFile);
+				part.type = Mail.Mime.TYPEAPPLICATION;
+				part.subtype = "octet-stream";
+				part.encoding = Mail.Encoding.ENCBINARY;
+				content.addPart(part);
+			};
+
+			message.content = content;
+		}
+		return message;
+	}
 }
 
 namespace modifies Workflow {
@@ -566,6 +602,11 @@ namespace modifies Workflow {
 			array whereClause = [];
 			array collapsable;
 			
+			boolean checkingErrandContents = (.getPositiveSearchTerms() or .getNegativeSearchTerms() ? true : false);
+			boolean checkingFromAddress = (.getPositiveEmailLists() or .getNegativeEmailLists() ? true : false);
+			
+			string fromAddressSQL = 
+			
 			// workflow_errands
 			if( format.errandId ) selectClause[] = "errand.workflow_errand_id AS errand_id";
 			if( format.arrived )  selectClause[] = "errand.timestampArrive AS _internal_timestamp_arrived";
@@ -606,23 +647,25 @@ namespace modifies Workflow {
 						WHERE parent_workflow_mail_id=errand.mail_fkey)) AS to_address
 				";
 			}
-			if( format.fromAddress ) {
+			if( format.fromAddress or checkingFromAddress ) {
 				selectClause[] = "
 					(SELECT emailAddress
 					 FROM workflow_mailorigins
 					 WHERE workflow_mailorigin_id IN (
 						SELECT from_fkey 
 						FROM workflow_mails 
-						WHERE workflow_mail_id=errand.mail_fkey)) AS from_address
-				";
+						WHERE workflow_mail_id=errand.mail_fkey)) AS " + (format.fromAddress ? 'from_address' : '_internal_from_address');
 			}
 			
 			// workflow_simplemesssges
-			if( format.subject or format.question ) {
+			if( format.subject or format.question or checkingErrandContents ) {
 				leftJoins['workflow_simplemessages AS question'] = "errand.message_fkey = question.workflow_simplemessage_id";
 				leftJoins['workflow_mails AS mail'] = "errand.mail_fkey = mail.workflow_mail_id";
 				if( format.subject )  selectClause[] = "question.subject AS subject, mail.subject AS original_subject";
 				if( format.question ) selectClause[] = "question.body AS question, mail.body AS original_question";
+				if( checkingErrandContents ) {
+					selectClause[] = "(question.subject || ' ' || question.body || ' ' || mail.subject || ' ' || mail.body) AS _internal_errand_text";
+				}
 			}
 			if( format.answer ) {
 				leftJoins['workflow_answers AS answer'] = "errand.answer_fkey = answer.workflow_answer_id";
