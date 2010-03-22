@@ -224,23 +224,42 @@ namespace Exports {
 				boolean shouldRecord = true;
 				
 				if( checkingErrandContents ) {
-					shouldRecord = shouldRecord and positiveSearchTerms.each() using ( term ) {
-						return (row._internal_errand_text.index(term) >= 0);
+					boolean contentGreenLight = (positiveSearchTerms ? false : true);
+					
+					positiveSearchTerms.each() using ( term ) {
+						if( (row._internal_errand_text.index(term) >= 0) ) {
+							contentGreenLight = true;
+							return false;
+						}
 					};
-					shouldRecord = shouldRecord and negativeEmailLists.each() using ( term ) {
-						return (row._internal_errand_text.index(term) == -1);
+					negativeEmailLists.each() using ( term ) {
+						if( (row._internal_errand_text.index(term) >= 0) ) {
+							contentGreenLight = false;
+							return false;
+						}
 					};
+					shouldRecord = contentGreenLight;
 				}
 
-				if( checkingFromAddress ) {
-					shouldRecord = shouldRecord and positiveEmailLists.each() using ( email ) {
+				if( checkingFromAddress and shouldRecord ) {
+					boolean emailGreenLight = (positiveEmailLists ? false : true);
+					
+					positiveEmailLists.each() using ( email ) {
 						string address = (row.from_address ? row.from_address : row._internal_from_address);
-						return (address.index(email) >= 0);
+						if( address.index(email) >= 0 ) {
+							emailGreenLight = true;
+							return false;
+						}
 					};
 					shouldRecord = shouldRecord and negativeEmailLists.each() using ( email ) {
 						string address = (row.from_address ? row.from_address : row._internal_from_address);
-						return (address.index(email) == -1);
+						if( address.index(email) >= 0 ) {
+							emailGreenLight = false;
+							return false;
+						}
 					};
+					
+					shouldRecord = emailGreenLight;
 				}
 
 				if( shouldRecord ) {
@@ -777,7 +796,7 @@ namespace modifies Workflow {
 			number count = 1;
 			
 			actual_export.setValue('exportFormat', format);
-			.runQuery(actual_export.generateSQL(), 0, 20).each() using ( row ) {
+			.runQuery(actual_export.generateSQL(), 0, 10).each() using ( row ) {
 				string id = 'row-' + Date.GMTnow() + '-' + count;
 				
 				if( not columns ) columns = row.toOrder(format);
@@ -822,7 +841,7 @@ namespace modifies Workflow {
 					keepRunning = false;
 				} else {
 					// Update the progress
-					.updateProgress( generated_export, ((offset / (export_size + 0.0)) * 50).round() );
+					.updateProgress( generated_export, (((offset > export_size ? offset : export_size) / (export_size + 0.0)) * 50).round() );
 					// Run the data retrival
 					resultSeen = writer.record(.runQuery(fetch_sql, offset, limit));
 					offset += limit;
