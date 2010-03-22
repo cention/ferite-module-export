@@ -197,11 +197,11 @@ namespace Exports {
 		}
 		function record( array list ) {
 			string path = .filenameStub() + ".intermediate.json";
-			boolean checkingErrandContents = (.getPositiveSearchTerms() or .getNegativeSearchTerms() ? true : false);
-			boolean checkingFromAddress = (.getPositiveEmailLists() or .getNegativeEmailLists() ? true : false);
+			boolean checkingErrandContents = (.export.getPositiveSearchTerms() or .export.getNegativeSearchTerms() ? true : false);
+			boolean checkingFromAddress = (.export.getPositiveEmailLists() or .export.getNegativeEmailLists() ? true : false);
 
 			array positiveSearchTerms = .export.getPositiveSearchTerms();
-			array negativeSearchTerms = .export.getNegativeeSearchTerms();
+			array negativeSearchTerms = .export.getNegativeSearchTerms();
 			array positiveEmailLists = .export.getPositiveEmailLists();
 			array negativeEmailLists = .export.getNegativeEmailLists();
 
@@ -222,11 +222,11 @@ namespace Exports {
 				if( checkingFromAddress ) {
 					shouldRecord = shouldRecord and positiveEmailLists.each() using ( email ) {
 						string address = (row.from_address ? row.from_address : row._internal_from_address);
-						return (address.index(term) >= 0);
+						return (address.index(email) >= 0);
 					};
 					shouldRecord = shouldRecord and negativeEmailLists.each() using ( email ) {
 						string address = (row.from_address ? row.from_address : row._internal_from_address);
-						return (address.index(term) == -1);
+						return (address.index(email) == -1);
 					};
 				}
 
@@ -273,10 +273,7 @@ namespace Exports {
 				
 				progress++;
 				real_progress = ((progress / (.recordedCount + 0.0)) * 50).round() + 50;
-				
-				if( (real_progress % 5) == 0 ) {
-					.export.updateProgress( generated_export, real_progress );
-				}
+				.export.updateProgress( generated_export, real_progress );
 				
 				if( complex ) {
 					if( line ) {
@@ -604,8 +601,6 @@ namespace modifies Workflow {
 			
 			boolean checkingErrandContents = (.getPositiveSearchTerms() or .getNegativeSearchTerms() ? true : false);
 			boolean checkingFromAddress = (.getPositiveEmailLists() or .getNegativeEmailLists() ? true : false);
-			
-			string fromAddressSQL = 
 			
 			// workflow_errands
 			if( format.errandId ) selectClause[] = "errand.workflow_errand_id AS errand_id";
