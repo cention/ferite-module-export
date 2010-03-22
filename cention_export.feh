@@ -165,8 +165,13 @@ namespace Exports {
 		function setTag( string tag ) {
 			.tag = tag;
 		}
+		
+		string stub;
 		function filenameStub {
-			return .setupPathForExport() + "/${Regexp.replaceAll(' ', .export.name, '-')}_${.formatDate(.export.start)}_to_${.formatDate(.export.finish)}_${.tag}";
+			if( not .stub ) {
+				.stub = .setupPathForExport() + "/${Regexp.replaceAll(' ', .export.name, '-')}_${.formatDate(.export.start)}_to_${.formatDate(.export.finish)}_${.tag}"
+			}
+			return ;
 		}
 		function start {
 			string path = .filenameStub() + ".intermediate.json";
