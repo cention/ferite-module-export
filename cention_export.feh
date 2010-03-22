@@ -25,7 +25,7 @@ global {
  * @param string text the text to log
  */
 function log( object export, string text ) {
-	text = '[' + formatDateTime(Date.GMTnow()) + '] {' + export.name + '} ' + text;
+	text = '[' + formatDateTime(Date.GMTnow()) + '] {' + (export ? export.name : 'Exports Backend') + '} ' + text;
 
 	if( logToConsole )
 		Console.println( text );
