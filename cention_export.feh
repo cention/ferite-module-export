@@ -775,6 +775,7 @@ namespace modifies Workflow {
 				}
 			} while( resultSeen and keepRunning );
 
+
 			if( keepRunning ) {
 				log(self, "Totals: recorded: ${writer.recordedCount}; duplicate rows eliminated: ${writer.duplicateCount}");
 				log(self, "Finishing export to file: ${writer.finishFiles()}");
@@ -794,13 +795,18 @@ namespace modifies Workflow {
 				generated_export.setValue('filename', writer.finishFiles().join(':'));
 				generated_export.save();
 				log(self, "Export recorded to object with id ${generated_export.id}.");
+
+				actual_export = Workflow.Export.forceLoad(actual_export.id);
+				actual_export.setValue('exportState', Workflow.Export.STATE_FINISHED);
+				actual_export.save();
 			} else {
 				generated_export.delete();
+
+				actual_export = Workflow.Export.forceLoad(actual_export.id);
+				actual_export.setValue('exportState', Workflow.Export.STATE_IDLE);
+				actual_export.save();
 			}
 
-			actual_export = Workflow.Export.forceLoad(actual_export.id);
-			actual_export.setValue('exportState', Workflow.Export.STATE_IDLE);
-			actual_export.save();
 		}
 	}
 }
