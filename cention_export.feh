@@ -672,7 +672,7 @@ namespace modifies Workflow {
 							SELECT child_workflow_tag_id 
 							FROM workflow_errand_tags_links 
 							WHERE parent_workflow_errand_id=errand.workflow_errand_id AND
-								child_workflow_tag_id NOT IN (SELECT workflow_tag_id FROM workflow_tags WHERE name like 'System%'))
+								child_workflow_tag_id NOT IN (SELECT workflow_tag_id FROM workflow_tags WHERE name like 'system%'))
 					) AS tag_names
 				";
 			}
