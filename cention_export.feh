@@ -544,6 +544,39 @@ namespace Exports {
 }
 
 namespace modifies Workflow {
+	class modifies Format {
+		function structure {
+			object format = self;
+			array keys = [], values = [];
+
+			if( format.errandId )    values['errand_id'] = I('Errand ID');
+			if( format.fromAddress ) values['from_address'] = I('From Address');
+			if( format.toAddress )   values['to_address'] = I('To Address');
+			if( format.subject )     values['subject'] = I('Errand Subject');
+			if( format.question )    values['question'] = I('Question');
+			if( format.answer )      values['answer'] = I('Answer');
+			if( format.arrived )     values['timestamp_arrived'] = I('Arrived');
+			if( format.opened )      values['timestamp_opened'] = I('Opened');
+			if( format.answered )    values['timestamp_answered'] = I('Answered');
+			if( format.closed )      values['timestamp_closed'] = I('Closed');
+			if( format.agentid )     values['agent_id'] = I('Agent ID');
+			if( format.agentname )   values['agent_name'] = I('Agent Name');
+			if( format.areaid )      values['area_id'] = I('Area ID');
+			if( format.areaname )    values['area_name'] = I('Area Name');
+			if( format.clientid )    values['client_id'] = I('Client ID');
+			if( format.priority )    values['priority'] = I('Errand Priority');
+			if( format.tags )        values['tag_names'] = I('Tags');
+			
+			values.eachWithIndex() using ( value, index ) {
+				keys[] = values.getName(index);
+			};
+
+			return [
+				'active_keys' => keys,
+				'translations' => values
+			];
+		}
+	}
 	class modifies Export {
 		function setSearchTerms( array positive, array negative ) {
 			.setValue('positivesearchterms', String.base64encode(Serialize.toNative(positive)));
@@ -684,7 +717,7 @@ namespace modifies Workflow {
 			// workflow_users
 			if( format.agentname ) {
 				leftJoins['workflow_users AS agent'] = "errand.owner_fkey = agent.workflow_user_id";
-				selectClause[] = "(agent.username || '(' || agent.loginname || ')') AS agent_name";
+				selectClause[] = "(agent.username || ' (' || agent.loginname || ')') AS agent_name";
 			}
 			// workflow_areas
 			if( format.areaname ) {
