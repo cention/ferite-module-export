@@ -499,6 +499,39 @@ namespace Exports {
 
 namespace modifies Workflow {
 	class modifies Export {
+		function setSearchTerms( array positive, array negative ) {
+			.setValue('positivesearchterms', String.base64encode(Serialize.toNative(positive)));
+			.setValue('negativesearchterms', String.base64encode(Serialize.toNative(negative)));
+		}
+		function getPositiveSearchTerms {
+			if( not .positivesearchterms ) {
+				return [];
+			}
+			return Serialize.fromNative(String.base64decode(.positivesearchterms));
+		}
+		function getNegativeSearchTerms {
+			if( not .negativesearchterms ) {
+				return [];
+			}
+			return Serialize.fromNative(String.base64decode(.negativesearchterms));
+		}
+		function setEmailLists( array positive, array negative ) {
+			.setValue('positiveEmailAddList', String.base64encode(Serialize.toNative(positive)));
+			.setValue('negativeEmailAddList', String.base64encode(Serialize.toNative(negative)));
+		}
+		function getPositiveEmailLists {
+			if( not .positivesearchterms ) {
+				return [];
+			}
+			return Serialize.fromNative(String.base64decode(.positiveEmailAddList));
+		}
+		function getNegativeEmailLists {
+			if( not .negativesearchterms ) {
+				return [];
+			}
+			return Serialize.fromNative(String.base64decode(.negativeEmailAddList));
+		}
+
 		function updateProgress( object generated_export, number progress ) {
 			if( generated_export.progress < progress ) {
 				log(self, "Progress: $progress%");
