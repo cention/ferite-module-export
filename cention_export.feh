@@ -848,7 +848,6 @@ namespace modifies Workflow {
 				}
 			} while( resultSeen and keepRunning );
 
-
 			if( keepRunning ) {
 				log(self, "Totals: recorded: ${writer.recordedCount}; duplicate rows eliminated: ${writer.duplicateCount}");
 				log(self, "Finishing export to file: ${writer.finishFiles()}");
