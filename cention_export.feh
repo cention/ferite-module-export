@@ -368,9 +368,10 @@ namespace Exports {
 				File.remove(path);
 				output = File.create( path, 0644);
 				output = File.open( path, FileSystem.O_RDWR );
-				output.writeln("<html>");
-				output.writeln("<body>");
-				output.writeln("<table>");
+				output.writeln('<html>');
+				output.writeln('<head><meta http-equiv="CONTENT-Type" content="text/html; charset=UTF-8"></head>');
+				output.writeln('<body>');
+				output.writeln('<table>');
 
 				stream = .iterateIntermediateFile( generated_export, true, stream ) using ( row ) {
 					array values = row.toArray(.export.exportFormat);
