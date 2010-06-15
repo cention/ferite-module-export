@@ -232,7 +232,7 @@ namespace Exports {
 							return false;
 						}
 					};
-					negativeEmailLists.each() using ( term ) {
+					negativeSearchTerms.each() using ( term ) {
 						if( (row._internal_errand_text.index(term) >= 0) ) {
 							contentGreenLight = false;
 							return false;
@@ -251,7 +251,7 @@ namespace Exports {
 							return false;
 						}
 					};
-					shouldRecord = shouldRecord and negativeEmailLists.each() using ( email ) {
+					negativeEmailLists.each() using ( email ) {
 						string address = (row.from_address ? row.from_address : row._internal_from_address);
 						if( address.index(email) >= 0 ) {
 							emailGreenLight = false;
@@ -842,7 +842,7 @@ namespace modifies Workflow {
 					keepRunning = false;
 				} else {
 					// Update the progress
-					.updateProgress( generated_export, (((offset > export_size ? export_size : offset ) / (export_size + 0.0)) * 50).round() );
+					.updateProgress( generated_export, (export_size > 0 ? (((offset > export_size ? export_size : offset ) / (export_size + 0.0)) * 50).round() : 50) );
 					// Run the data retrival
 					resultSeen = writer.record(.runQuery(fetch_sql, offset, limit));
 					offset += limit;
