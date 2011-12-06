@@ -857,8 +857,11 @@ namespace modifies Workflow {
 			
 				message = Exports.createMessage( actual_export, writer.finishFiles() );
 				if( message ) {
+					object _logClosure = closure( string text ) {
+						log(self, text);
+					};
 					log(self, "Sending export file${(writer.finishFiles().size() > 1 ? 's' : '')} to ${actual_export.optionalAddress}");
-					MailUtilities.sendMessage( new Mail.Connection(), message );
+					MailUtilities.sendMessage( new Mail.Connection(), message, _logClosure );
 				}
 
 				log(self, "Recording generated report for UI.");
