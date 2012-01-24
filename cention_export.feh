@@ -227,13 +227,13 @@ namespace Exports {
 					boolean contentGreenLight = (positiveSearchTerms ? false : true);
 					
 					positiveSearchTerms.each() using ( term ) {
-						if( (row._internal_errand_text.index(term) >= 0) ) {
+						if( (row._internal_errand_text.index(term) >= 0) or (row._internal_answer_text.index(term) >= 0) ) {
 							contentGreenLight = true;
 							return false;
 						}
 					};
 					negativeSearchTerms.each() using ( term ) {
-						if( (row._internal_errand_text.index(term) >= 0) ) {
+						if( (row._internal_errand_text.index(term) >= 0) or (row._internal_answer_text.index(term) >= 0) ) {
 							contentGreenLight = false;
 							return false;
 						}
@@ -684,7 +684,33 @@ namespace modifies Workflow {
 			}
 			
 			// workflow_errand_tags_links, workflow_tags
+			// Intended output format: [user name] added [tag display] in [area name] at [timestamp when]
 			if( format.tags ) {
+				selectClause[] = "
+					(SELECT array_to_string(array_agg(
+							workflow_users.username ||
+							' added ' ||
+							workflow_tags.display ||
+							' in ' ||
+							workflow_areas.name ||
+							' at ' ||
+							to_char(
+								(TIMESTAMP 'epoch' + (workflow_recordederrandtaggings.timestampWhen + INTEGER '${Date.timezone() * 2}') * INTERVAL '1 second'),
+								'YYYY/MM/DD HH24:MI')
+						), '\n')
+					 FROM workflow_recordederrandtaggings
+					 JOIN workflow_tags ON workflow_tag_id=workflow_recordederrandtaggings.tag_fkey
+					 JOIN workflow_users ON workflow_user_id=workflow_recordederrandtaggings.user_fkey
+					 JOIN workflow_areas ON workflow_area_id=workflow_recordederrandtaggings.area_fkey
+					 WHERE workflow_recordederrandtaggings.type=${Workflow.RecordedErrandTagging.ADD}
+					 AND workflow_recordederrandtaggings.tag_fkey IN (
+							SELECT child_workflow_tag_id
+							FROM workflow_errand_tags_links
+							WHERE parent_workflow_errand_id=errand.workflow_errand_id AND
+								child_workflow_tag_id NOT IN (SELECT workflow_tag_id FROM workflow_tags WHERE name like 'system%'))
+					) AS tag_names
+				";
+				/*
 				selectClause[] = "
 					(SELECT array_to_string(array_agg(display), ', ') 
 					 FROM workflow_tags 
@@ -695,6 +721,7 @@ namespace modifies Workflow {
 								child_workflow_tag_id NOT IN (SELECT workflow_tag_id FROM workflow_tags WHERE name like 'system%'))
 					) AS tag_names
 				";
+				*/
 			}
 
 			// workflow_mail... ish.
@@ -728,10 +755,13 @@ namespace modifies Workflow {
 					selectClause[] = "(question.subject || ' ' || question.body || ' ' || mail.subject || ' ' || mail.body) AS _internal_errand_text";
 				}
 			}
-			if( format.answer ) {
+			if( format.answer or checkingErrandContents ) {
 				leftJoins['workflow_answers AS answer'] = "errand.answer_fkey = answer.workflow_answer_id";
 				leftJoins['workflow_simplemessages AS answer_content'] = "answer.message_fkey = answer_content.workflow_simplemessage_id";
 				selectClause[] = "answer_content.body AS answer";
+				if( checkingErrandContents ) {
+					selectClause[] = "(answer_content.subject || ' ' || answer_content.body) AS _internal_answer_text";
+				}
 			}
 
 			// workflow_users
