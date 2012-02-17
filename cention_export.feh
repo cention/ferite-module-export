@@ -1,8 +1,8 @@
 uses "/cention/etc/webframework-config.feh";
 uses "webframework/webframework";
 uses "workflow";
-uses "MailUtilities";
-uses "cmail";
+//uses "MailUtilities";
+//uses "cmail";
 
 /*
  * TODO:
@@ -89,6 +89,19 @@ namespace Exports {
 
 		string _internal_from_address;
 		string _internal_errand_text;
+		string _internal_answer_text;
+		
+		object export;
+		
+		constructor( object export ) {
+			object thisObject = new Object(self);
+			export.getAvailableAreaTags().each() using ( tag ) {
+				string safe_name = Regexp.replaceAll('[^A-z]', tag.display, '_').toLower();
+				Console.println('setVariable: ' + 'tag_' + safe_name);
+				thisObject.setVariable('tag_' + safe_name, '');
+			};
+			.export = export;
+		}
 		
 		function toArray( object format ) {
 			array values = [];
@@ -109,7 +122,16 @@ namespace Exports {
 			if( format.areaname ) values['area_name'] = .area_name;
 			if( format.clientid ) values['client_id'] = .client_id;
 			if( format.priority ) values['priority'] = .priority;
-			if( format.tags ) values['tag_names'] = .tag_names;
+			if( format.tags ) {
+				if( .export ) {
+					object thisObject = new Object(self);
+					.export.getAvailableAreaTags().each() using ( tag ) {
+						string safe_name = 'tag_' + Regexp.replaceAll('[^A-z]', tag.display, '_').toLower();
+						Console.println('getVariable: ' + safe_name);
+						values[safe_name] = thisObject.getVariable(safe_name);
+					};
+				}
+			}
 
 			return values;
 		}
@@ -125,7 +147,7 @@ namespace Exports {
 		}
 		function toOrder( object format ) {
 			array order = [];
-			array values = .toArray(format);
+			array values = .toArray(format, export);
 			values.eachWithIndex() using ( _value, index ) {
 				order[] = values.getName(index);
 			};
@@ -290,13 +312,13 @@ namespace Exports {
 				}
 			}
 		}
-		function iterateIntermediateFile( object generated_export ) {
+		function iterateIntermediateFile( object actual_export, object generated_export ) {
 			return .iterateIntermediateFile( generated_export, true, null ) using recipient();
 		}
-		function iterateIntermediateFile( object generated_export, boolean complex, object continuance ) {
+		function iterateIntermediateFile( object actual_export, object generated_export, boolean complex, object continuance ) {
 			string path = .filenameStub() + ".intermediate.json";
 			object stream = (continuance ? continuance : File.open(path));
-			object handler = new Exports.ExportResult();
+			object handler = new Exports.ExportResult(actual_export);
 			number progress = 0;
 			
 			while( not stream.eos() ) {
@@ -353,7 +375,7 @@ namespace Exports {
 			}
 		}
 		
-		function finish( object generated_export ) {
+		function finish( object actual_export, object generated_export ) {
 			object output = null;
 			array paths = .finishFiles();
 			boolean writtenHeader = false;
@@ -373,13 +395,14 @@ namespace Exports {
 				output.writeln('<body>');
 				output.writeln('<table>');
 
-				stream = .iterateIntermediateFile( generated_export, true, stream ) using ( row ) {
+				stream = .iterateIntermediateFile( actual_export, generated_export, true, stream ) using ( row ) {
 					array values = row.toArray(.export.exportFormat);
 					array xml_tags = [];
 
 					values.eachWithIndex() using ( value, index ) {
+						string name = values.getName(index);
 						if( not writtenHeader ) {
-							header[] = values.getName(index);
+							header[] = name;
 						}
 						if( value isa string ) {
 							xml_tags[] = "\t\t<td>${EscapeHTML(value)}</td>";
@@ -419,7 +442,7 @@ namespace Exports {
 	class CSVDataWriter extends DataWriter { 
 		function finishFiles
 			return [ .filenameStub() + ".csv" ];
-		function finish( object generated_export ) {
+		function finish( object actual_export, object generated_export ) {
 			object output = null;
 			string path = .filenameStub() + '.csv';
 			
@@ -429,7 +452,7 @@ namespace Exports {
 			output = File.create( path, 0644);
 			output = File.open( path, FileSystem.O_RDWR );
 
-			.iterateIntermediateFile(generated_export) using ( row ) {
+			.iterateIntermediateFile(actual_export, generated_export) using ( row ) {
 				output.writeln(row.toArray(.export.exportFormat).join(',') using ( value ){
 					if( value isa string ) {
 						string real_value = value;
@@ -450,7 +473,7 @@ namespace Exports {
 	class XMLDataWriter extends DataWriter { 
 		function finishFiles
 			return [ .filenameStub() + ".xml" ];
-		function finish( object generated_export ) {
+		function finish( object actual_export, object generated_export ) {
 			object output = null;
 			string path = .filenameStub() + '.xml';
 
@@ -462,7 +485,7 @@ namespace Exports {
 			output.writeln("<?xml version=\"1.0\" ?>");
 			output.writeln("<export>");
 
-			.iterateIntermediateFile(generated_export) using ( row ) {
+			.iterateIntermediateFile(actual_export, generated_export) using ( row ) {
 				array values = row.toArray(.export.exportFormat);
 				array xml_tags = [];
 				
@@ -486,7 +509,7 @@ namespace Exports {
 	class JSONDataWriter extends DataWriter { 
 		function finishFiles
 			return  [ .filenameStub() + ".json" ];
-		function finish( object generated_export ) {
+		function finish( object actual_export, object generated_export ) {
 			object output = null;
 			string path = .filenameStub() + '.json';
 			string pendingComma = '';
@@ -498,7 +521,7 @@ namespace Exports {
 			output = File.open( path, FileSystem.O_RDWR );
 			output.writeln("[");
 
-			.iterateIntermediateFile(generated_export, false, null) using ( row ) {
+			.iterateIntermediateFile(actual_export, generated_export, false, null) using ( row ) {
 				if( pendingComma ) {
 					output.writeln(pendingComma);
 				}
@@ -630,6 +653,15 @@ namespace modifies Workflow {
 			}
 			return Serialize.fromNative(String.base64decode(.negativeEmailAddList));
 		}
+		function getAvailableAreaTags() {
+			array tags = [];
+			.areas.each() using ( area ) {
+				area.tags.each() using ( tag ) {
+					tags[] = tag;
+				};
+			};
+			return tags;
+		}
 
 		function updateProgress( object generated_export, number progress ) {
 			if( generated_export.progress < progress ) {
@@ -686,8 +718,38 @@ namespace modifies Workflow {
 			// workflow_errand_tags_links, workflow_tags
 			// Intended output format: [user name] added [tag display] in [area name] at [timestamp when]
 			if( format.tags ) {
+				.getAvailableAreaTags().each() using ( tag ) {
+					string safe_name = Regexp.replaceAll('[^A-z]', tag.display, '_').toLower();
+					Console.println('safe_name: ' + safe_name);
+					selectClause[] = "
+						(SELECT array_to_string(array_agg(
+							workflow_users.username ||
+							' added ' ||
+							workflow_tags.display ||
+							' in ' ||
+							workflow_areas.name ||
+							' at ' ||
+							to_char(
+								(TIMESTAMP 'epoch' + (workflow_recordederrandtaggings.timestampWhen + INTEGER '${Date.timezone() * 2}') * INTERVAL '1 second'),
+								'YYYY/MM/DD HH24:MI')
+							), ', ')
+						 FROM workflow_recordederrandtaggings
+						 JOIN workflow_tags ON workflow_tag_id=workflow_recordederrandtaggings.tag_fkey
+						 JOIN workflow_users ON workflow_user_id=workflow_recordederrandtaggings.user_fkey
+						 JOIN workflow_areas ON workflow_area_id=workflow_recordederrandtaggings.area_fkey
+						 WHERE workflow_recordederrandtaggings.type=${Workflow.RecordedErrandTagging.ADD}
+						 AND workflow_recordederrandtaggings.errand_fkey=errand.workflow_errand_id
+						 AND workflow_recordederrandtaggings.tag_fkey=${tag.id}
+						) AS tag_${safe_name}
+					";
+				};
+				
+				/*
 				selectClause[] = "
 					(SELECT array_to_string(array_agg(
+							'___name___' ||
+							workflow_tags.display ||
+							'___value___' ||
 							workflow_users.username ||
 							' added ' ||
 							workflow_tags.display ||
@@ -703,6 +765,7 @@ namespace modifies Workflow {
 					 JOIN workflow_users ON workflow_user_id=workflow_recordederrandtaggings.user_fkey
 					 JOIN workflow_areas ON workflow_area_id=workflow_recordederrandtaggings.area_fkey
 					 WHERE workflow_recordederrandtaggings.type=${Workflow.RecordedErrandTagging.ADD}
+					 AND workflow_recordederrandtaggings.errand_fkey=errand.workflow_errand_id
 					 AND workflow_recordederrandtaggings.tag_fkey IN (
 							SELECT child_workflow_tag_id
 							FROM workflow_errand_tags_links
@@ -710,6 +773,8 @@ namespace modifies Workflow {
 								child_workflow_tag_id NOT IN (SELECT workflow_tag_id FROM workflow_tags WHERE name like 'system%'))
 					) AS tag_names
 				";
+				*/
+				
 				/*
 				selectClause[] = "
 					(SELECT array_to_string(array_agg(display), ', ') 
@@ -851,6 +916,9 @@ namespace modifies Workflow {
 			boolean keepRunning = true;
 
 			log(self, "Starting export '${self.name}'");
+			log(self, "Start: ${formatDateTime(actual_export.start)}");
+			log(self, "Finish: ${formatDateTime(actual_export.finish)}");
+			log(self, "SQL: ${fetch_sql}");
 			export_size = .fetchExportSize(actual_export.generateSQL('SELECT COUNT(errand.workflow_errand_id) AS export_size', true));
 			log(self, "Export will be a maximum of $export_size rows.");
 			
@@ -882,7 +950,7 @@ namespace modifies Workflow {
 			if( keepRunning ) {
 				log(self, "Totals: recorded: ${writer.recordedCount}; duplicate rows eliminated: ${writer.duplicateCount}");
 				log(self, "Finishing export to file: ${writer.finishFiles()}");
-				writer.finish(generated_export);
+				writer.finish(actual_export, generated_export);
 				log(self, "Files written - export '${actual_export.name}' complete.");
 			
 				message = Exports.createMessage( actual_export, writer.finishFiles() );
