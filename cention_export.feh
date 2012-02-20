@@ -91,19 +91,19 @@ namespace Exports {
 		string _internal_errand_text;
 		string _internal_answer_text;
 		
-		object export;
-		
 		constructor( object export ) {
 			object thisObject = new Object(self);
+			array addedTags = [];
 			export.getAvailableAreaTags().each() using ( tag ) {
 				string safe_name = Regexp.replaceAll('[^A-z]', tag.display, '_').toLower();
-				Console.println('setVariable: ' + 'tag_' + safe_name);
-				thisObject.setVariable('tag_' + safe_name, '');
+				if( not addedTags.keyExists(safe_name) ) {
+					thisObject.setVariable('tag_' + safe_name, '');
+					addedTags[safe_name] = true;
+				}
 			};
-			.export = export;
 		}
 		
-		function toArray( object format ) {
+		function toArray( object format, object export ) {
 			array values = [];
 
 			if( format.errandId ) values['errand_id'] = .errand_id;
@@ -123,21 +123,22 @@ namespace Exports {
 			if( format.clientid ) values['client_id'] = .client_id;
 			if( format.priority ) values['priority'] = .priority;
 			if( format.tags ) {
-				if( .export ) {
+				if( export ) {
 					object thisObject = new Object(self);
-					.export.getAvailableAreaTags().each() using ( tag ) {
+					export.getAvailableAreaTags().each() using ( tag ) {
 						string safe_name = 'tag_' + Regexp.replaceAll('[^A-z]', tag.display, '_').toLower();
-						Console.println('getVariable: ' + safe_name);
-						values[safe_name] = thisObject.getVariable(safe_name);
+						if( not values.keyExists(safe_name) ) {
+							values[safe_name] = thisObject.getVariable(safe_name);
+						}
 					};
 				}
 			}
 
 			return values;
 		}
-		function toJSONForFormat( object format ) {
+		function toJSONForFormat( object format, object export ) {
 			array objectValues = [];
-			array values = .toArray(format);
+			array values = .toArray(format, export);
 			values.eachWithIndex() using ( _value, index ) {
 				string key = JSON.escape(values.getName(index));
 				string value = JSON.valueToJSON(_value);
@@ -145,7 +146,7 @@ namespace Exports {
 			};
 			return "{" + objectValues.join(',') + "}";
 		}
-		function toOrder( object format ) {
+		function toOrder( object format, object export ) {
 			array order = [];
 			array values = .toArray(format, export);
 			values.eachWithIndex() using ( _value, index ) {
@@ -296,7 +297,7 @@ namespace Exports {
 			return (list.size() >  0);
 		}
 		function record( object row ) {
-			string json = row.toJSONForFormat(.export.exportFormat);
+			string json = row.toJSONForFormat(.export.exportFormat, .export);
 			string md5 = String.base64encode(MHash.hashString(json, MHash.SHA256));
 		
 			if( not .hasSeenHash(md5) ) {
@@ -396,7 +397,7 @@ namespace Exports {
 				output.writeln('<table>');
 
 				stream = .iterateIntermediateFile( actual_export, generated_export, true, stream ) using ( row ) {
-					array values = row.toArray(.export.exportFormat);
+					array values = row.toArray(.export.exportFormat, .export);
 					array xml_tags = [];
 
 					values.eachWithIndex() using ( value, index ) {
@@ -453,7 +454,7 @@ namespace Exports {
 			output = File.open( path, FileSystem.O_RDWR );
 
 			.iterateIntermediateFile(actual_export, generated_export) using ( row ) {
-				output.writeln(row.toArray(.export.exportFormat).join(',') using ( value ){
+				output.writeln(row.toArray(.export.exportFormat, .export).join(',') using ( value ){
 					if( value isa string ) {
 						string real_value = value;
 						real_value = Regexp.replaceAll("\n", real_value, "\\n");
@@ -486,7 +487,7 @@ namespace Exports {
 			output.writeln("<export>");
 
 			.iterateIntermediateFile(actual_export, generated_export) using ( row ) {
-				array values = row.toArray(.export.exportFormat);
+				array values = row.toArray(.export.exportFormat, .export);
 				array xml_tags = [];
 				
 				values.map() using ( key, value ) {
@@ -720,7 +721,6 @@ namespace modifies Workflow {
 			if( format.tags ) {
 				.getAvailableAreaTags().each() using ( tag ) {
 					string safe_name = Regexp.replaceAll('[^A-z]', tag.display, '_').toLower();
-					Console.println('safe_name: ' + safe_name);
 					selectClause[] = "
 						(SELECT array_to_string(array_agg(
 							workflow_users.username ||
@@ -743,50 +743,6 @@ namespace modifies Workflow {
 						) AS tag_${safe_name}
 					";
 				};
-				
-				/*
-				selectClause[] = "
-					(SELECT array_to_string(array_agg(
-							'___name___' ||
-							workflow_tags.display ||
-							'___value___' ||
-							workflow_users.username ||
-							' added ' ||
-							workflow_tags.display ||
-							' in ' ||
-							workflow_areas.name ||
-							' at ' ||
-							to_char(
-								(TIMESTAMP 'epoch' + (workflow_recordederrandtaggings.timestampWhen + INTEGER '${Date.timezone() * 2}') * INTERVAL '1 second'),
-								'YYYY/MM/DD HH24:MI')
-						), '\n')
-					 FROM workflow_recordederrandtaggings
-					 JOIN workflow_tags ON workflow_tag_id=workflow_recordederrandtaggings.tag_fkey
-					 JOIN workflow_users ON workflow_user_id=workflow_recordederrandtaggings.user_fkey
-					 JOIN workflow_areas ON workflow_area_id=workflow_recordederrandtaggings.area_fkey
-					 WHERE workflow_recordederrandtaggings.type=${Workflow.RecordedErrandTagging.ADD}
-					 AND workflow_recordederrandtaggings.errand_fkey=errand.workflow_errand_id
-					 AND workflow_recordederrandtaggings.tag_fkey IN (
-							SELECT child_workflow_tag_id
-							FROM workflow_errand_tags_links
-							WHERE parent_workflow_errand_id=errand.workflow_errand_id AND
-								child_workflow_tag_id NOT IN (SELECT workflow_tag_id FROM workflow_tags WHERE name like 'system%'))
-					) AS tag_names
-				";
-				*/
-				
-				/*
-				selectClause[] = "
-					(SELECT array_to_string(array_agg(display), ', ') 
-					 FROM workflow_tags 
-					 WHERE workflow_tag_id IN (
-							SELECT child_workflow_tag_id 
-							FROM workflow_errand_tags_links 
-							WHERE parent_workflow_errand_id=errand.workflow_errand_id AND
-								child_workflow_tag_id NOT IN (SELECT workflow_tag_id FROM workflow_tags WHERE name like 'system%'))
-					) AS tag_names
-				";
-				*/
 			}
 
 			// workflow_mail... ish.
@@ -882,7 +838,7 @@ namespace modifies Workflow {
 				(whereClause 
 					? "WHERE " + whereClause.join(' AND ')
 					: '') +
-				(aggregate ? '' : "ORDER BY workflow_errand_id ASC OFFSET {offset} LIMIT {limit}");
+				(aggregate ? '' : " ORDER BY workflow_errand_id ASC OFFSET {offset} LIMIT {limit}");
 		}
 		function generatePreview( object format ) {
 			object actual_export = Workflow.Export.load(self.id);
@@ -895,8 +851,8 @@ namespace modifies Workflow {
 			.runQuery(actual_export.generateSQL(), 0, 10).each() using ( row ) {
 				string id = 'row-' + Date.GMTnow() + '-' + count;
 				
-				if( not columns ) columns = row.toOrder(format);
-				list["$id"] = [ 'data' => row.toArray(format), 'id' => id ];
+				if( not columns ) columns = row.toOrder(format, self);
+				list["$id"] = [ 'data' => row.toArray(format, self), 'id' => id ];
 				order[] = id;
 				count++;
 			};
@@ -916,9 +872,7 @@ namespace modifies Workflow {
 			boolean keepRunning = true;
 
 			log(self, "Starting export '${self.name}'");
-			log(self, "Start: ${formatDateTime(actual_export.start)}");
-			log(self, "Finish: ${formatDateTime(actual_export.finish)}");
-			log(self, "SQL: ${fetch_sql}");
+			
 			export_size = .fetchExportSize(actual_export.generateSQL('SELECT COUNT(errand.workflow_errand_id) AS export_size', true));
 			log(self, "Export will be a maximum of $export_size rows.");
 			
