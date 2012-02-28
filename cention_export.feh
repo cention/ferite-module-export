@@ -1,8 +1,8 @@
 uses "/cention/etc/webframework-config.feh";
 uses "webframework/webframework";
 uses "workflow";
-//uses "MailUtilities";
-//uses "cmail";
+uses "MailUtilities";
+uses "cmail";
 
 /*
  * TODO:
