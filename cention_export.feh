@@ -95,7 +95,7 @@ namespace Exports {
 			object thisObject = new Object(self);
 			array addedTags = [];
 			export.getAvailableAreaTags().each() using ( tag ) {
-				string safe_name = Regexp.replaceAll('[^A-z]', tag.display, '_').toLower();
+				string safe_name = Regexp.replaceAll('[^A-z0-9]', tag.display, '_').toLower();
 				if( not addedTags.keyExists(safe_name) ) {
 					thisObject.setVariable('tag_' + safe_name, '');
 					addedTags[safe_name] = true;
@@ -122,11 +122,12 @@ namespace Exports {
 			if( format.areaname ) values['area_name'] = .area_name;
 			if( format.clientid ) values['client_id'] = .client_id;
 			if( format.priority ) values['priority'] = .priority;
+			if( format.tags ) values['tag_names'] = .tag_names;
 			if( format.tags ) {
 				if( export ) {
 					object thisObject = new Object(self);
 					export.getAvailableAreaTags().each() using ( tag ) {
-						string safe_name = 'tag_' + Regexp.replaceAll('[^A-z]', tag.display, '_').toLower();
+						string safe_name = 'tag_' + Regexp.replaceAll('[^A-z0-9]', tag.display, '_').toLower();
 						if( not values.keyExists(safe_name) ) {
 							values[safe_name] = thisObject.getVariable(safe_name);
 						}
@@ -314,7 +315,7 @@ namespace Exports {
 			}
 		}
 		function iterateIntermediateFile( object actual_export, object generated_export ) {
-			return .iterateIntermediateFile( generated_export, true, null ) using recipient();
+			return .iterateIntermediateFile( actual_export, generated_export, true, null ) using recipient();
 		}
 		function iterateIntermediateFile( object actual_export, object generated_export, boolean complex, object continuance ) {
 			string path = .filenameStub() + ".intermediate.json";
@@ -717,10 +718,19 @@ namespace modifies Workflow {
 			}
 			
 			// workflow_errand_tags_links, workflow_tags
-			// Intended output format: [user name] added [tag display] in [area name] at [timestamp when]
 			if( format.tags ) {
+				selectClause[] = "
+					(SELECT array_to_string(array_agg(display), ', ')
+					 FROM workflow_tags
+					 WHERE workflow_tag_id IN (
+						SELECT child_workflow_tag_id
+						FROM workflow_errand_tags_links
+						WHERE parent_workflow_errand_id=errand.workflow_errand_id AND
+							child_workflow_tag_id NOT IN (SELECT workflow_tag_id FROM workflow_tags WHERE name like 'system%'))
+					) AS tag_names";
+				
 				.getAvailableAreaTags().each() using ( tag ) {
-					string safe_name = Regexp.replaceAll('[^A-z]', tag.display, '_').toLower();
+					string safe_name = Regexp.replaceAll('[^A-z0-9]', tag.display, '_').toLower();
 					selectClause[] = "
 						(SELECT array_to_string(array_agg(
 							workflow_users.username ||
@@ -875,6 +885,7 @@ namespace modifies Workflow {
 			
 			export_size = .fetchExportSize(actual_export.generateSQL('SELECT COUNT(errand.workflow_errand_id) AS export_size', true));
 			log(self, "Export will be a maximum of $export_size rows.");
+			log(self, "Running query: ${fetch_sql}");
 			
 			actual_export.setValue('exportState', Workflow.Export.STATE_RUNNING);
 			actual_export.save();
