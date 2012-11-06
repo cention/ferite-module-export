@@ -92,6 +92,8 @@ namespace Exports {
 		string _internal_answer_text;
 		
 		constructor( object export ) {
+			/* Tobias 2012-11-06: Since one tag per column only works when there
+			 * is a few tags in the system I'm disabling it until it can be fixed.
 			object thisObject = new Object(self);
 			array addedTags = [];
 			export.getAvailableAreaTags().each() using ( tag ) {
@@ -100,7 +102,7 @@ namespace Exports {
 					thisObject.setVariable('tag_' + safe_name, '');
 					addedTags[safe_name] = true;
 				}
-			};
+			}; */
 		}
 		
 		function toArray( object format, object export ) {
@@ -123,6 +125,8 @@ namespace Exports {
 			if( format.clientid ) values['client_id'] = .client_id;
 			if( format.priority ) values['priority'] = .priority;
 			if( format.tags ) values['tag_names'] = .tag_names;
+			/* Tobias 2012-11-06: Since one tag per column only works when there
+			 * is a few tags in the system I'm disabling it until it can be fixed.
 			if( format.tags ) {
 				if( export ) {
 					object thisObject = new Object(self);
@@ -133,7 +137,7 @@ namespace Exports {
 						}
 					};
 				}
-			}
+			} */
 
 			return values;
 		}
@@ -729,6 +733,8 @@ namespace modifies Workflow {
 							child_workflow_tag_id NOT IN (SELECT workflow_tag_id FROM workflow_tags WHERE name like 'system%'))
 					) AS tag_names";
 				
+				/* Tobias 2012-11-06: Since one tag per column only works when there
+				 * is a few tags in the system I'm disabling it until it can be fixed.
 				.getAvailableAreaTags().each() using ( tag ) {
 					string safe_name = Regexp.replaceAll('[^A-z0-9]', tag.display, '_').toLower();
 					selectClause[] = "
@@ -752,7 +758,7 @@ namespace modifies Workflow {
 						 AND workflow_recordederrandtaggings.tag_fkey=${tag.id}
 						) AS tag_${safe_name}
 					";
-				};
+				}; */
 			}
 
 			// workflow_mail... ish.
