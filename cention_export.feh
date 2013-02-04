@@ -3,6 +3,8 @@ uses "webframework/webframework";
 uses "workflow";
 uses "MailUtilities";
 uses "cmail";
+uses "dbi";
+uses "reflection";
 
 /*
  * TODO:
@@ -676,18 +678,40 @@ namespace modifies Workflow {
 				generated_export.save();
 			}
 		}
+		function rawQuery( string query, boolean exportResult ) {
+			object connection = Dbi.connect('pgsql', 'postgres', '', 'localhost', 'objsrv');
+			object result = connection.query(query);
+			array rows = [];
+			if( result ) {
+				array row;
+				while( row = result.nextRecord() ) {
+					if( exportResult ) {
+						object o = new Exports.ExportResult();
+						object relf = new Object(o);
+						relf.setVariables(row);
+						rows[] = o;
+					} else {
+						rows[] = row;
+					}
+				}
+				result.finish();
+			}
+			connection.disconnect();
+			return rows;
+		}
 		function runQuery( string query, number offset, number limit ) {
 			string sql = query;
 			sql = Regexp.replaceAll('{limit}', sql, "$limit");
 			sql = Regexp.replaceAll('{offset}', sql, "$offset");
 			monitor {
-				return ObjRunObject.invoke('ObjectServer.query.rawSQL', [ 'sql' => sql ], new JSON.ArrayHandler(Exports.ExportResult));
+				array result = .rawQuery(sql, true);
+				return result;
 			} handle {
 				log(self, "Error running query: $sql (${err.str})");
 			}
 		}
 		function fetchExportSize( string query ) {
-			array results = ObjRunObject.rawQuery(query);
+			array results = .rawQuery(query, false);
 			return results[0]['export_size'];
 		}
 		function generateSQL {
@@ -891,7 +915,7 @@ namespace modifies Workflow {
 			
 			export_size = .fetchExportSize(actual_export.generateSQL('SELECT COUNT(errand.workflow_errand_id) AS export_size', true));
 			log(self, "Export will be a maximum of $export_size rows.");
-			log(self, "Running query: ${fetch_sql}");
+			//log(self, "Running query: ${fetch_sql}");
 			
 			actual_export.setValue('exportState', Workflow.Export.STATE_RUNNING);
 			actual_export.save();
