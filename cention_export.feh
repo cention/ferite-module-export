@@ -196,7 +196,7 @@ namespace Exports {
 			return Date.localDate(localDate).format('%Y%m%d');
 		}
 		function setupPathForExport {
-			string path = Exports.exportPath + Regexp.replaceAll(' ', .export.name, '-');
+			string path = Exports.exportPath + Regexp.replaceAll(' ', "${.export.id}", '-');
 			Directory.build(path);
 			return path;
 		}
