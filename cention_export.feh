@@ -196,7 +196,7 @@ namespace Exports {
 			return Date.localDate(localDate).format('%Y%m%d');
 		}
 		function setupPathForExport {
-			string path = Exports.exportPath + Regexp.replaceAll(' ', .export.name, '-');
+			string path = Exports.exportPath + Regexp.replaceAll(' |/', .export.name, '-');
 			Directory.build(path);
 			return path;
 		}
@@ -207,7 +207,7 @@ namespace Exports {
 		string stub;
 		function filenameStub {
 			if( not .stub ) {
-				.stub = .setupPathForExport() + "/${Regexp.replaceAll(' ', .export.name, '-')}_${.formatDate(.export.start)}_to_${.formatDate(.export.finish)}_${.tag}";
+				.stub = .setupPathForExport() + "/${Regexp.replaceAll(' |/', .export.name, '-')}_${.formatDate(.export.start)}_to_${.formatDate(.export.finish)}_${.tag}";
 			}
 			return .stub;
 		}
