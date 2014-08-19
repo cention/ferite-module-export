@@ -2,7 +2,7 @@
 <yard name="export">
 
 	<property id="name" value="cention-export-support" />
-	<property id="version" value="3.2" />
+	<property id="version" value="3.7" />
 	
 	<collection id="export-support">
 		<property type="prefix" value="$(FeriteModuleSourceDir)" />  
