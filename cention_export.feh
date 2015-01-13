@@ -630,7 +630,7 @@ namespace modifies Workflow {
 			if( format.clientid )    values['client_id'] = I('Client ID');
 			if( format.priority )    values['priority'] = I('Errand Priority');
 			if( format.tags )        values['tag_names'] = I('Tags');
-			if( format.feedback ) 	 values['Satisfaction_meter_answer'] = I('Satisfaction meter answer');
+			if( format.feedback ) 	 values['Satisfaction_meter_answer'] = I('Satisfaction meter');
 			
 			values.eachWithIndex() using ( value, index ) {
 				keys[] = values.getName(index);
