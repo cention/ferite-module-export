@@ -83,6 +83,11 @@ namespace Exports {
 		number client_id;
 		string priority;
 		string tag_names;
+		number satisfaction_meter_answer_1;
+		number satisfaction_meter_answer_2;
+		number satisfaction_meter_answer_3;
+		number satisfaction_meter_answer_4;
+		number satisfaction_meter_answer_5;
 
 		number _internal_timestamp_arrived;
 		number _internal_timestamp_opened;
@@ -127,6 +132,14 @@ namespace Exports {
 			if( format.clientid ) values['client_id'] = .client_id;
 			if( format.priority ) values['priority'] = .priority;
 			if( format.tags ) values['tag_names'] = .tag_names;
+			if( format.feedback ) {
+				values['satisfaction_meter_answer_1'] = .satisfaction_meter_answer_1;
+				values['satisfaction_meter_answer_2'] = .satisfaction_meter_answer_2;
+				values['satisfaction_meter_answer_3'] = .satisfaction_meter_answer_3;
+				values['satisfaction_meter_answer_4'] = .satisfaction_meter_answer_4;
+				values['satisfaction_meter_answer_5'] = .satisfaction_meter_answer_5;
+			}
+			
 			/* Tobias 2012-11-06: Since one tag per column only works when there
 			 * is a few tags in the system I'm disabling it until it can be fixed.
 			if( format.tags ) {
@@ -196,7 +209,7 @@ namespace Exports {
 			return Date.localDate(localDate).format('%Y%m%d');
 		}
 		function setupPathForExport {
-			string path = Exports.exportPath + Regexp.replaceAll(' |/', .export.name, '-');
+			string path = Exports.exportPath + Regexp.replaceAll(' ', .export.name, '-');
 			Directory.build(path);
 			return path;
 		}
@@ -207,7 +220,7 @@ namespace Exports {
 		string stub;
 		function filenameStub {
 			if( not .stub ) {
-				.stub = .setupPathForExport() + "/${Regexp.replaceAll(' |/', .export.name, '-')}_${.formatDate(.export.start)}_to_${.formatDate(.export.finish)}_${.tag}";
+				.stub = .setupPathForExport() + "/${Regexp.replaceAll(' ', .export.name, '-')}_${.formatDate(.export.start)}_to_${.formatDate(.export.finish)}_${.tag}";
 			}
 			return .stub;
 		}
@@ -617,6 +630,7 @@ namespace modifies Workflow {
 			if( format.clientid )    values['client_id'] = I('Client ID');
 			if( format.priority )    values['priority'] = I('Errand Priority');
 			if( format.tags )        values['tag_names'] = I('Tags');
+			if( format.feedback ) 	 values['Satisfaction_meter_answer'] = I('Satisfaction meter');
 			
 			values.eachWithIndex() using ( value, index ) {
 				keys[] = values.getName(index);
@@ -835,7 +849,25 @@ namespace modifies Workflow {
 				leftJoins['workflow_areas AS area'] = "errand.targetArea_fkey = area.workflow_area_id";
 				selectClause[] = "area.name AS area_name";
 			}
-			
+			// workflow_feedbacks
+			if( format.feedback ) {
+				selectClause[] = "(SELECT count(feedback)
+						FROM workflow_feedbacks where 
+						errand.workflow_errand_id = workflow_feedbacks.errand_fkey and workflow_feedbacks.feedback IN (1)) AS satisfaction_meter_answer_1";
+				selectClause[] = "(SELECT count(feedback)
+						FROM workflow_feedbacks where 
+						errand.workflow_errand_id = workflow_feedbacks.errand_fkey and workflow_feedbacks.feedback IN (2)) AS satisfaction_meter_answer_2";
+				selectClause[] = "(SELECT count(feedback)
+						FROM workflow_feedbacks where 
+						errand.workflow_errand_id = workflow_feedbacks.errand_fkey and workflow_feedbacks.feedback IN (3)) AS satisfaction_meter_answer_3";
+				selectClause[] = "(SELECT count(feedback)
+						FROM workflow_feedbacks where 
+						errand.workflow_errand_id = workflow_feedbacks.errand_fkey and workflow_feedbacks.feedback IN (4)) AS satisfaction_meter_answer_4";
+				selectClause[] = "(SELECT count(feedback)
+						FROM workflow_feedbacks where 
+						errand.workflow_errand_id = workflow_feedbacks.errand_fkey and workflow_feedbacks.feedback IN (5)) AS satisfaction_meter_answer_5";
+			}		 
+		
 			if( .start ) {
 				whereClause[] = "errand.timestampArrive > ${.start}";
 			}
@@ -847,6 +879,7 @@ namespace modifies Workflow {
 			} else {
 				whereClause[] = "errand.targetArea_fkey IN (" + Workflow.SystemGroup.areas(.systemGroup).join(',') using ( area ) { return '' + area; } + ")";
 			}
+		
 			
 			if( not .allerrandsflag ) {
 				if( .positiveTagList or .negativeTagList ) {
