@@ -117,7 +117,10 @@ namespace Exports {
 
 			string theDate;
 			string timeZoneName;
-			object timeZoneObj = Workflow.TimeZone.load(export.timeZoneId);
+			object timeZoneObj;
+			if(export.timeZoneId > 0){
+				timeZoneObj = Workflow.TimeZone.load(export.timeZoneId);
+			}
 			if(timeZoneObj){
 				timeZoneName = timeZoneObj.zoneName;
 			}
@@ -232,7 +235,9 @@ namespace Exports {
 			object timeZoneObj;
 			string timeZoneName;
 			if(.export){
-				object timeZone = Workflow.TimeZone.load(.export.timeZoneId);
+				if(.export.timeZoneId > 0) {
+					timeZoneObj = Workflow.TimeZone.load(.export.timeZoneId);
+				}
 			}
 			if(timeZoneObj){
 				timeZoneName = timeZoneObj.zoneName;
