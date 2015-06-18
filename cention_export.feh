@@ -83,6 +83,7 @@ namespace Exports {
 		number client_id;
 		string priority;
 		string tag_names;
+		string channel;
 		number satisfaction_meter_answer_1;
 		number satisfaction_meter_answer_2;
 		number satisfaction_meter_answer_3;
@@ -145,6 +146,7 @@ namespace Exports {
 			if( format.clientid ) values['client_id'] = .client_id;
 			if( format.priority ) values['priority'] = .priority;
 			if( format.tags ) values['tag_names'] = .tag_names;
+			if( format.channel ) values['channel'] = .channel;
 			if( format.feedback ) {
 				values['satisfaction_meter_answer_1'] = .satisfaction_meter_answer_1;
 				values['satisfaction_meter_answer_2'] = .satisfaction_meter_answer_2;
@@ -592,24 +594,40 @@ namespace Exports {
 		
 		if( export.emailflag ) {
 			string body;
+			string fileURL;
+			string fileName;
+			string cmdLine;
+			array pathArr;
+			string domainAddress;
 
 			object content = new Mail.MessageMultiPart();
 			object text = new Mail.MessagePart();
+			object html = new Mail.MessagePart();
 			
 			message = new Mail.Message();
 			message.header = new Mail.MessageHeader();
 			message.header.from.add( new Mail.Address(export.optionalAddress) );
 			message.header.to.add( new Mail.Address(export.optionalAddress) );
 			
-			message.header.subject = I('Export {0:name} Completed').expand(export.name);
+			if( String.length(export.emailHeader) > 0 ){
+				message.header.subject = export.emailHeader;
+			}
+			else{
+				message.header.subject = I('Export {0:name} Completed').expand(export.name);
+			}
 			message.header.date = Date.localDate(Date.now()).format( '%a, %d %b %Y %H:%M:%S %z' );
 
 			message = MailUtilities.setOutgoingHeader(message,export.optionalAddress);
 
-			body = I('Your export {0:name} has completed. Please find the export within the attached file(s).').expand(export.name);
-			body = Regexp.replaceAll("\r\n", body, "\n");
-			body = Regexp.replaceAll("\r", body, "\n");
-			body = Regexp.replaceAll("\n", body, "\r\n");
+			if( String.length(export.emailBody) > 0 ){
+				body = export.emailBody;
+			}
+			else{
+				body = I('Your export {0:name} has completed. Please find the export within the attached file(s).').expand(export.name);
+			}
+			body = String.replace(body, "\r\n", "\n");
+			body = String.replace(body, "\r", "\n");
+			body = String.replace(body, "\n", "\r\n");
 
 			text.type = Mail.Mime.TYPETEXT;
 			text.subtype = "plain";
@@ -617,7 +635,13 @@ namespace Exports {
 			text.content = body;
 			content.addPart(text);
 			
+			body = "<html><body>";
+			domainAddress = "" + F('export-domain-address');
+			if( domainAddress == ""){
+				domainAddress = "http://localhost";
+			}
 			exportedFiles.each() using ( exportedFile ) {
+				/* replacing attachments with links
 				object part = new Mail.MessagePart();
 				part.filepath = exportedFile;
 				part.filename = File.name(exportedFile);
@@ -625,7 +649,24 @@ namespace Exports {
 				part.subtype = "octet-stream";
 				part.encoding = Mail.Encoding.ENCBINARY;
 				content.addPart(part);
+				*/
+				pathArr = exportedFile.toArray("/");
+				fileName = pathArr.last();
+				fileURL = Config.DataDirectoryURL + 'Exports/' + fileName;
+				Directory.make("/cention/webroot" + Config.DataDirectoryURL + 
+					'Exports/', 0777);
+				Sys.system("cp " + exportedFile + " " + "/cention/webroot" +
+						fileURL);
+				fileURL = domainAddress + fileURL;
+				body += '<a href="' + fileURL + "\">" +
+					export.name + "<br>";
 			};
+			body += "</body></html>\n";
+			html.type  = Mail.Mime.TYPETEXT;
+			html.subtype = "html";
+			html.charset = "UTF-8";
+			html.content = body;
+            content.addPart(html);
 
 			message.content = content;
 		}
@@ -657,6 +698,7 @@ namespace modifies Workflow {
 			if( format.priority )    values['priority'] = I('Errand Priority');
 			if( format.tags )        values['tag_names'] = I('Tags');
 			if( format.feedback ) 	 values['Satisfaction_meter_answer'] = I('Satisfaction meter');
+			if( format.channel ) 	 values['channel'] = I('Channel');
 			
 			values.eachWithIndex() using ( value, index ) {
 				keys[] = values.getName(index);
@@ -766,6 +808,7 @@ namespace modifies Workflow {
 			array leftJoins = [];
 			array whereClause = [];
 			array collapsable;
+			string services;
 			
 			boolean checkingErrandContents = (.getPositiveSearchTerms() or .getNegativeSearchTerms() ? true : false);
 			boolean checkingFromAddress = (.getPositiveEmailLists() or .getNegativeEmailLists() ? true : false);
@@ -783,6 +826,10 @@ namespace modifies Workflow {
 			if( format.priority ) {
 				selectClause[] = "priority.name AS priority";
 				leftJoins['workflow_priorities AS priority'] = "errand.priority_fkey = priority.workflow_priority_id";
+			}
+			if( format.channel ){
+				selectClause[]  = "services.name as channel";
+				leftJoins['workflow_services as services'] = "errand.service_fkey = services.workflow_service_id";
 			}
 			
 			// workflow_errand_tags_links, workflow_tags
@@ -922,6 +969,12 @@ namespace modifies Workflow {
 				}
 			} else {
 				whereClause[] = "errand.workflow_errand_id NOT IN (SELECT parent_workflow_errand_id FROM workflow_errand_tags_links WHERE parent_workflow_errand_id=errand.workflow_errand_id AND child_workflow_tag_id=${deleted_tag.id})";
+			}
+
+			if(self.services != ""){
+				services = String.replace(self.services,"|", ",");
+				services = String.postTrim(services,",");
+				whereClause[] = "errand.service_fkey IN ("+services+")";
 			}
 			
 			leftJoins.map() using ( join, condition ) {
