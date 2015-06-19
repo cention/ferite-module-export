@@ -709,6 +709,31 @@ namespace modifies Workflow {
 				'translations' => values
 			];
 		}
+
+		function colTranslations {
+			object format = self;
+			array values=[];
+			values['errand_id'] = I('Errand ID');
+			values['from_address'] = I('From Address');
+			values['to_address'] = I('To Address');
+			values['subject'] = I('Errand Subject');
+			values['question'] = I('Question');
+			values['answer'] = I('Answer');
+			values['timestamp_arrived'] = I('Arrived');
+			values['timestamp_opened'] = I('Opened');
+			values['timestamp_answered'] = I('Answered');
+			values['timestamp_closed'] = I('Closed');
+			values['agent_id'] = I('Agent ID');
+			values['agent_name'] = I('Agent Name');
+			values['area_id'] = I('Area ID');
+			values['area_name'] = I('Area Name');
+			values['client_id'] = I('Client ID');
+			values['priority'] = I('Errand Priority');
+			values['tag_names'] = I('Tags');
+			values['Satisfaction_meter_answer'] = I('Satisfaction meter');
+			values['channel'] = I('Channel');
+			return values;
+		}
 	}
 	class modifies Export {
 		function setSearchTerms( array positive, array negative ) {
