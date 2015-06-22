@@ -1022,8 +1022,12 @@ namespace modifies Workflow {
 			array list = [];
 			array columns = [], order = [];
 			object original_format = actual_export.exportFormat;
+			array original_areas = actual_export.areas;
 			number count = 1;
 			
+			if(.areas){
+				actual_export.setValue('areas', .areas);
+			}
 			actual_export.setValue('exportFormat', format);
 			.runQuery(actual_export.generateSQL(), 0, 10).each() using ( row ) {
 				string id = 'row-' + Date.now() + '-' + count;
@@ -1034,6 +1038,7 @@ namespace modifies Workflow {
 				count++;
 			};
 			actual_export.setValue('exportFormat', original_format);
+			actual_export.setValue('areas', original_areas);
 			return [ 'list' => list, 'order' => order, 'columns' => columns ];
 		}
 		function run {
