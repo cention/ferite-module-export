@@ -966,11 +966,21 @@ namespace modifies Workflow {
 						errand.workflow_errand_id = workflow_feedbacks.errand_fkey and workflow_feedbacks.feedback IN (5)) AS satisfaction_meter_answer_5";
 			}		 
 		
-			if( .start ) {
-				whereClause[] = "errand.timestampArrive > ${.start}";
+			if( (.start == 0 ) && (.finish == 0) && (.intervalType > 0)){
+				string startDate  = Workflow.SavedReport.startForRelativeDate(.intervalType);
+				string endDate = Workflow.SavedReport.endForRelativeDate(.intervalType);
+				whereClause[] = "errand.timestampArrive > " +
+						dateStringToTimestamp(startDate, '00:00:00');
+				whereClause[] = "errand.timestampArrive < " +
+						dateStringToTimestamp(endDate, '23:59:59');
 			}
-			if( .finish ) {
-				whereClause[] = "errand.timestampArrive < ${.finish}";
+			else {
+				if( .start ) {
+					whereClause[] = "errand.timestampArrive > ${.start}";
+				}
+				if( .finish ) {
+					whereClause[] = "errand.timestampArrive < ${.finish}";
+				}
 			}
 			if( .areas ) {
 				whereClause[] = "errand.targetArea_fkey IN (" + .areas.join(',') using ( area ) { return '' + area.id; } + ")";
@@ -1018,18 +1028,11 @@ namespace modifies Workflow {
 				(aggregate ? '' : " ORDER BY workflow_errand_id ASC OFFSET {offset} LIMIT {limit}");
 		}
 		function generatePreview( object format ) {
-			object actual_export = Workflow.Export.load(self.id);
 			array list = [];
 			array columns = [], order = [];
-			object original_format = actual_export.exportFormat;
-			array original_areas = actual_export.areas;
 			number count = 1;
 			
-			if(.areas){
-				actual_export.setValue('areas', .areas);
-			}
-			actual_export.setValue('exportFormat', format);
-			.runQuery(actual_export.generateSQL(), 0, 10).each() using ( row ) {
+			.runQuery(.generateSQL(), 0, 10).each() using ( row ) {
 				string id = 'row-' + Date.now() + '-' + count;
 				
 				if( not columns ) columns = row.toOrder(format, self);
@@ -1037,8 +1040,6 @@ namespace modifies Workflow {
 				order[] = id;
 				count++;
 			};
-			actual_export.setValue('exportFormat', original_format);
-			actual_export.setValue('areas', original_areas);
 			return [ 'list' => list, 'order' => order, 'columns' => columns ];
 		}
 		function run {
