@@ -600,10 +600,7 @@ namespace Exports {
 			array pathArr;
 			string domainAddress;
 
-			object content = new Mail.MessageMultiPart();
 			object text = new Mail.MessagePart();
-			object html = new Mail.MessagePart();
-			
 			message = new Mail.Message();
 			message.header = new Mail.MessageHeader();
 			message.header.from.add( new Mail.Address(export.optionalAddress) );
@@ -629,27 +626,12 @@ namespace Exports {
 			body = String.replace(body, "\r", "\n");
 			body = String.replace(body, "\n", "\r\n");
 
-			text.type = Mail.Mime.TYPETEXT;
-			text.subtype = "plain";
-			text.charset = "UTF-8";
-			text.content = body;
-			content.addPart(text);
-			
-			body = "<html><body>";
 			domainAddress = "" + F('export-domain-address');
 			if( domainAddress == ""){
 				domainAddress = "http://localhost";
 			}
+			body += "\n";
 			exportedFiles.each() using ( exportedFile ) {
-				/* replacing attachments with links
-				object part = new Mail.MessagePart();
-				part.filepath = exportedFile;
-				part.filename = File.name(exportedFile);
-				part.type = Mail.Mime.TYPEAPPLICATION;
-				part.subtype = "octet-stream";
-				part.encoding = Mail.Encoding.ENCBINARY;
-				content.addPart(part);
-				*/
 				pathArr = exportedFile.toArray("/");
 				fileName = pathArr.last();
 				fileURL = Config.DataDirectoryURL + 'Exports/' + fileName;
@@ -658,17 +640,14 @@ namespace Exports {
 				Sys.system("cp " + exportedFile + " " + "/cention/webroot" +
 						fileURL);
 				fileURL = domainAddress + fileURL;
-				body += '<a href="' + fileURL + "\">" +
-					export.name + "<br>";
+				body += fileURL + "\n";
 			};
-			body += "</body></html>\n";
-			html.type  = Mail.Mime.TYPETEXT;
-			html.subtype = "html";
-			html.charset = "UTF-8";
-			html.content = body;
-            content.addPart(html);
+			text.type  = Mail.Mime.TYPETEXT;
+			text.subtype = "plain";
+			text.charset = "UTF-8";
+			text.content = body;
 
-			message.content = content;
+			message.content = text;
 		}
 		return message;
 	}
