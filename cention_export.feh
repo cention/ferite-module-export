@@ -83,7 +83,6 @@ namespace Exports {
 		number client_id;
 		string priority;
 		string tag_names;
-		string channel;
 		number satisfaction_meter_answer_1;
 		number satisfaction_meter_answer_2;
 		number satisfaction_meter_answer_3;
@@ -146,7 +145,6 @@ namespace Exports {
 			if( format.clientid ) values['client_id'] = .client_id;
 			if( format.priority ) values['priority'] = .priority;
 			if( format.tags ) values['tag_names'] = .tag_names;
-			if( format.channel ) values['channel'] = .channel;
 			if( format.feedback ) {
 				values['satisfaction_meter_answer_1'] = .satisfaction_meter_answer_1;
 				values['satisfaction_meter_answer_2'] = .satisfaction_meter_answer_2;
@@ -698,7 +696,6 @@ namespace modifies Workflow {
 			if( format.priority )    values['priority'] = I('Errand Priority');
 			if( format.tags )        values['tag_names'] = I('Tags');
 			if( format.feedback ) 	 values['Satisfaction_meter_answer'] = I('Satisfaction meter');
-			if( format.channel ) 	 values['channel'] = I('Channel');
 			
 			values.eachWithIndex() using ( value, index ) {
 				keys[] = values.getName(index);
@@ -731,7 +728,6 @@ namespace modifies Workflow {
 			values['priority'] = I('Errand Priority');
 			values['tag_names'] = I('Tags');
 			values['Satisfaction_meter_answer'] = I('Satisfaction meter');
-			values['channel'] = I('Channel');
 			return values;
 		}
 	}
@@ -851,10 +847,6 @@ namespace modifies Workflow {
 			if( format.priority ) {
 				selectClause[] = "priority.name AS priority";
 				leftJoins['workflow_priorities AS priority'] = "errand.priority_fkey = priority.workflow_priority_id";
-			}
-			if( format.channel ){
-				selectClause[]  = "services.name as channel";
-				leftJoins['workflow_services as services'] = "errand.service_fkey = services.workflow_service_id";
 			}
 			
 			// workflow_errand_tags_links, workflow_tags
