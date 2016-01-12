@@ -61,7 +61,8 @@ namespace Exports {
 	string exportPath = '';
 
 	class ExportResult {
-		number errand_id;
+		string errand_id;
+		string errand_display_id;
 		string from_address;
 		string to_address;
 		string subject;
@@ -129,7 +130,7 @@ namespace Exports {
 				timeZoneName = Workflow.getSystemTimeZoneName();
 			}
 			theDate = formatDateTimeTZ(._internal_timestamp_arrived, timeZoneName);
-			if( format.errandId ) values['errand_id'] = .errand_id;
+			if( format.errandId ) values['errand_id'] = (.errand_display_id ? .errand_display_id : "${.errand_id}");
 			if( format.fromAddress ) values['from_address'] = .from_address;
 			if( format.toAddress ) values['to_address'] = .to_address;
 			if( format.subject ) values['subject'] = (.subject ? .subject : .original_subject);
@@ -828,7 +829,7 @@ namespace modifies Workflow {
 			boolean checkingFromAddress = (.getPositiveEmailLists() or .getNegativeEmailLists() ? true : false);
 			
 			// workflow_errands
-			if( format.errandId ) selectClause[] = "errand.workflow_errand_id AS errand_id";
+			if( format.errandId ) selectClause[] = "errand.workflow_errand_id AS errand_id, errand.displayID AS errand_display_id";
 			if( format.arrived )  selectClause[] = "errand.timestampArrive AS _internal_timestamp_arrived";
 			if( format.opened )   selectClause[] = "errand.timestampOpen AS _internal_timestamp_opened";
 			if( format.answered ) selectClause[] = "errand.timestampLastAnswered AS _internal_timestamp_answered";
