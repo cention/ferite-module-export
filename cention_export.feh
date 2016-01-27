@@ -249,7 +249,14 @@ namespace Exports {
 				timeZoneName = Workflow.TimeZone.getSystemTimeZoneName();
 			}
 			if( not .stub ) {
-				.stub = .setupPathForExport() + "/${Regexp.replaceAll(' ', .export.name, '-')}_${formatDateTZ(.export.start, timeZoneName, '%Y%m%d')}_to_${formatDateTZ(.export.finish, timeZoneName, '%Y%m%d')}_${.tag}";
+				string name = Regexp.replaceAll(' ', .export.name, '-');
+				string time = formatDateTZ(.export.start, timeZoneName, '%Y%m%d') + '_to_' + formatDateTZ(.export.finish, timeZoneName, '%Y%m%d');
+				if( .export.intervalType > 0 /* relative */ ) {
+					object start = Date.localParse(Workflow.SavedReport.startForRelativeDate(.export.intervalType), Config.DateFormat);
+					object end = Date.localParse(Workflow.SavedReport.endForRelativeDate(.export.intervalType), Config.DateFormat);
+					time = formatDateTZ(start.time(), timeZoneName, '%Y%m%d') + '_to_' + formatDateTZ(end.time(), timeZoneName, '%Y%m%d');
+				}
+				.stub = .setupPathForExport() + "/${name}_${time}_${.tag}";
 			}
 			return .stub;
 		}
