@@ -992,14 +992,16 @@ namespace modifies Workflow {
 			if( not .allerrandsflag ) {
 				if( .positiveTagList or .negativeTagList ) {
 					if( .positiveTagList ) {
-						whereClause[] = "errand.workflow_errand_id IN (SELECT parent_workflow_errand_id FROM workflow_errand_tags_links WHERE child_workflow_tag_id IN (" + .positiveTagList.join(',') using ( tag ) {
+						string list = .positiveTagList.join(',') using ( tag ) {
 							return '' + tag.id;
-						} + "))";
+						};
+						whereClause[] = "errand.workflow_errand_id IN (SELECT parent_workflow_errand_id FROM workflow_errand_tags_links WHERE child_workflow_tag_id IN (${list}) OR child_workflow_tag_id IN (SELECT displaytag_fkey FROM workflow_displaytags WHERE clienttag_fkey IN (${list})))";
 					}
 					if( .negativeTagList ) {
-						whereClause[] = "errand.workflow_errand_id NOT IN (SELECT parent_workflow_errand_id FROM workflow_errand_tags_links WHERE child_workflow_tag_id IN (" + .negativeTagList.join(',') using ( tag ) {
+						string list = .negativeTagList.join(',') using ( tag ) {
 							return '' + tag.id;
-						} + "))";
+						};
+						whereClause[] = "errand.workflow_errand_id NOT IN (SELECT parent_workflow_errand_id FROM workflow_errand_tags_links WHERE child_workflow_tag_id IN (${list}) OR child_workflow_tag_id IN (SELECT displaytag_fkey FROM workflow_displaytags WHERE clienttag_fkey IN (${list})))";
 					}
 				}
 			} else {
